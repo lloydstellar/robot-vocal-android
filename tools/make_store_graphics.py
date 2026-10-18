@@ -25,7 +25,7 @@ SCREENS = [
     ("01-steps.png", "Every syllable on a step of the beat"),
     ("02-words.png", "Type your lyrics, pick a flow"),
     ("04-effect.png", "Vocoders, talkboxes and delays on the beat"),
-    ("03-voice.png", "26 robot voices, from diphones to 8-bit chips"),
+    ("03-voice.png", "44 robot voices, from talking computers to 8-bit chips"),
     ("05-out.png", "Save a WAV that loops, or send it to Ableton Live"),
     ("07-songs.png", "Your songs stay on your phone"),
     ("06-intro.png", "Free, without an account or ads"),
@@ -72,7 +72,7 @@ def feature(raw, out):
     .rule {{ position: absolute; left: 56px; top: 252px; }}
     .line {{ position: absolute; left: 56px; top: 290px; width: 470px; font-family: Body; font-size: 30px; line-height: 1.3; color: #B8B2A4; }}
     .keys {{ position: absolute; right: 44px; top: 70px; width: 420px; height: 338px; overflow: hidden; border: 2px solid #3A3934; }}
-    .keys img {{ width: 454px; margin-left: -17px; margin-top: -494px; }}
+    .keys img {{ width: 454px; margin-left: -17px; margin-top: -574px; }}
     </style></head><body>
     <div class="legend kicker">LLOYD'S</div><div class="legend title">ROBOT<br>VOCAL</div>
     <div class="rule" style="top: 360px"></div>
