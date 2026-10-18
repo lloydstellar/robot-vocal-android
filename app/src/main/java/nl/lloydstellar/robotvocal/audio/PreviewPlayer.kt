@@ -15,7 +15,8 @@ import androidx.compose.runtime.setValue
 /**
  * Plays the vocal loop with the example beat under it. Both go through one
  * AudioTrack and are mixed block by block, so they can never drift apart.
- * The beat exists only here: export code never sees it.
+ * The beat exists only here: export code never sees it. A limiter at the end
+ * keeps the sum of the two under full scale.
  *
  * New material (after an edit) replaces the old at the same loop position,
  * so playback runs on while the song changes.
@@ -73,6 +74,7 @@ class PreviewPlayer(context: Context) {
 
     private fun write(t: AudioTrack, gen: Int, from: Long) {
         val block = FloatArray(BLOCK * 2)
+        val limiter = Limiter(RATE)
         var pos = from
         while (gen == generation) {
             val v = vocal
@@ -96,6 +98,7 @@ class PreviewPlayer(context: Context) {
                 n++
                 pos++
             }
+            limiter.process(block, n)
             if (n > 0 && t.write(block, 0, 2 * n, AudioTrack.WRITE_BLOCKING) < 0) break
             if (n < BLOCK) {
                 /* the end without looping: let the buffer play out, then stop */
