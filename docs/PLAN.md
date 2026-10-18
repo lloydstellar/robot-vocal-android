@@ -128,7 +128,7 @@ The onset of the vowel, not the start of the consonant before it, is what a list
 anchor = vowel onset - min(feel * onset consonant length, 60 ms)
 ```
 
-and the anchor sits exactly on the slot's frame. `feel` starts at 0.25 and is a setting ("FEEL", 0 to 0.4), because the literature does not agree on one value.
+and the anchor sits exactly on the slot's frame. `feel` started at 0.25, the compromise of the literature, but in Live next to tight drums that put robot vowels about 20 ms late: their synthetic consonants are soft, so the vowel itself is heard as the beat (which matches Rathcke et al. 2024 in report 04). It is now 0, the vowel exactly on the slot; a FEEL setting (0 to 0.4) can still push it later.
 
 ### 6.3 Engines that take durations (Flite, formant, LPC)
 
@@ -295,7 +295,7 @@ Each step ends with a commit, a build on the Pixel 8 and something Lloyd can hea
 ## 20. Risks and open points
 
 - eSpeak NG's phoneme onset times and the vowel stretch need to be measured; if they are not tight enough, eSpeak NG voices render per syllable instead.
-- The feel value and the flow weights come from literature and need tuning by ear.
+- The flow weights come from literature and need tuning by ear. Feel was tuned by ear in Live: 0, the vowel on the beat.
 - narrator-ts is a new single-author project; review before use. whackintalk was reviewed before the port: it implements published work (Klatt 1980, KLGLOTT88, Peterson and Barney) and holds no code or data from Apple; only its voice names were Apple's, and the app uses its own.
 - Default warp mode in Live (Complex Pro or Beats) is a listening test in Live.
 - Speed and memory on the Pixel 8 are not measured yet; rendering is offline, so slow means waiting, not glitches.

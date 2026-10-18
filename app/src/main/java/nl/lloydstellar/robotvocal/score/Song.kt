@@ -33,7 +33,12 @@ data class Song(
     /** Null: the flow preset's swing and gate. */
     val swing: Double? = null,
     val gate: Double? = null,
-    val feel: Double = 0.25,
+    /**
+     * How far the vowel lands after its step, as a share of the consonants
+     * before it (the P-centre lead of docs/research/04, at most 60 ms). 0: the
+     * vowel exactly on the step, which is where robot voices are heard.
+     */
+    val feel: Double = 0.0,
     val beat: String = "electro1",
     val beatLevel: Double = 0.7,
 )

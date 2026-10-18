@@ -29,18 +29,16 @@ class RenderTest {
         ),
     )
 
-    @Test fun `every vowel starts its lead after its beat`() {
+    @Test fun `every vowel starts exactly on its step`() {
         val arrangement = Arranger.arrange(song, TestData.lyrics)
         val take = Renderer.render(song, arrangement, engine)
-        for (line in arrangement.lines) {
+        val vowels = take.phones.filter { it.vowel }.groupBy { it.syllable }.values.map { it.first() }
+        val beats = arrangement.lines.flatMap { line ->
             val perSlot = Ticks.perSlot(line.placement.slotsPerBar)
-            for (p in line.placement.placed) {
-                val beat = Ticks.frame(line.startTick + p.slot * perSlot.toDouble(), song.bpm, 48_000)
-                val vowel = take.phones.first { it.vowel && it.start >= beat - 48 && it.start <= beat + 48 * 61 }
-                val lead = vowel.start - beat
-                assertTrue("vowel ${vowel.ph} at ${vowel.start}, beat $beat", lead in 0..(48 * 60))
-            }
+            line.placement.placed.map { Ticks.frame(line.startTick + it.slot * perSlot.toDouble(), song.bpm, 48_000) }
         }
+        assertEquals(beats.size, vowels.size)
+        for ((vowel, beat) in vowels.zip(beats)) assertEquals("vowel ${vowel.ph} of syllable ${vowel.syllable}", beat, vowel.start)
     }
 
     @Test fun `the loop is a whole number of bars and every vowel sounds`() {

@@ -30,12 +30,15 @@ data class TimedPhone(
  * Turns placed syllables into phonemes with exact start and end frames.
  *
  * The point of a syllable that a listener hears as "on the beat" is close to
- * the onset of its vowel, a little earlier for long consonant clusters (the
- * perceptual centre; docs/research/04, section 2). So the vowel starts at
- * `beat + lead` with `lead = min(feel x onset length, 60 ms)`, and the onset
- * consonants run up to it before the beat. A run-up longer than half of the
- * previous syllable's time, or a vowel squeezed by its coda, is compressed
- * towards Klatt's minimum durations (the auto-fit rule of OpenUtau).
+ * the onset of its vowel (the perceptual centre; docs/research/04, section 2).
+ * For natural speech it lies a little earlier with long consonant clusters;
+ * robot voices, whose consonants are soft next to their vowels, are heard at
+ * the vowel itself. So the vowel starts at `beat + lead` with
+ * `lead = min(feel x onset length, 60 ms)`, feel 0 by default (the vowel on
+ * the step), and the onset consonants run up to it before the beat. A run-up
+ * longer than half of the previous syllable's time, or a vowel squeezed by
+ * its coda, is compressed towards Klatt's minimum durations (the auto-fit rule
+ * of OpenUtau).
  */
 class TimingPlanner(private val sampleRate: Int = SAMPLE_RATE) {
 
@@ -44,7 +47,7 @@ class TimingPlanner(private val sampleRate: Int = SAMPLE_RATE) {
         val swing: Double = 0.5,
         val offsetMs: Double = 0.0,
         val gate: Double = 0.85,
-        val feel: Double = 0.25,
+        val feel: Double = 0.0,
     )
 
     fun plan(
