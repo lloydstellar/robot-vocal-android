@@ -256,34 +256,34 @@ private fun StepsPage(model: StudioModel, playing: Pair<Int, Int>?) {
     }
     Spacer(Modifier.height(12.dp))
 
-    val pickups = placement.placed.filter { it.slot < 0 }
-    if (pickups.isNotEmpty()) {
-        GroupRule("PICKUP")
-        Spacer(Modifier.height(8.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            for (slot in -4 until 0) {
-                val p = byStart[slot]
-                StepKey(
-                    step = slots + slot,
-                    syllable = p?.let { syllables[it.syllable].text },
-                    badge = p?.let { badge(songLine, it.syllable) },
-                    hold = false,
-                    lamp = playing?.let { it.first == model.line && it.second == slot } == true,
-                    selected = slot == model.selectedSlot,
-                    stressed = p?.let { syllables[it.syllable].stress == Stress.PRIMARY } == true,
-                    modifier = Modifier.weight(1f),
-                ) { model.selectedSlot = slot }
-            }
-            repeat(4) { Spacer(Modifier.weight(1f)) }
+    /*
+     * The pickup row and the bar rules are there on every line, like the keys
+     * of a panel: while the song plays and the page follows it, the grid stays
+     * where it is, with or without a syllable before the beat.
+     */
+    GroupRule("PICKUP")
+    Spacer(Modifier.height(8.dp))
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        for (slot in -4 until 0) {
+            val p = byStart[slot]
+            StepKey(
+                step = slots + slot,
+                syllable = p?.let { syllables[it.syllable].text },
+                badge = p?.let { badge(songLine, it.syllable) },
+                hold = false,
+                lamp = playing?.let { it.first == model.line && it.second == slot } == true,
+                selected = slot == model.selectedSlot,
+                stressed = p?.let { syllables[it.syllable].stress == Stress.PRIMARY } == true,
+                modifier = Modifier.weight(1f),
+            ) { model.selectedSlot = slot }
         }
-        Spacer(Modifier.height(12.dp))
+        repeat(4) { Spacer(Modifier.weight(1f)) }
     }
+    Spacer(Modifier.height(12.dp))
 
     for (bar in 0 until placement.bars) {
-        if (placement.bars > 1) {
-            GroupRule("BAR ${bar + 1}")
-            Spacer(Modifier.height(8.dp))
-        }
+        GroupRule("BAR ${bar + 1}")
+        Spacer(Modifier.height(8.dp))
         val perRow = if (slots == 12) 6 else 8
         for (row in 0 until slots / perRow) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -309,42 +309,45 @@ private fun StepsPage(model: StudioModel, playing: Pair<Int, Int>?) {
     Spacer(Modifier.height(8.dp))
     GroupRule(if (model.selectedSlot < 0) "PICKUP STEP" else "STEP ${Math.floorMod(model.selectedSlot, slots) + 1}")
     Spacer(Modifier.height(8.dp))
+    /* an empty step shows the same rows with its keys off, so nothing below jumps either */
     val chosen = byStart[model.selectedSlot]
-    if (chosen == null) {
-        Text("No syllable starts on this step.", style = body(14.sp, C.LegendDim))
-    } else {
-        val s = syllables[chosen.syllable]
-        Row(verticalAlignment = Alignment.Bottom) {
-            Text(s.text.uppercase(), style = body(28.sp, C.Legend, FontWeight.SemiBold))
+    val s = chosen?.let { syllables[it.syllable] }
+    Row(verticalAlignment = Alignment.Bottom) {
+        Text(s?.text?.uppercase() ?: "EMPTY", style = body(28.sp, if (s != null) C.Legend else C.LegendDim, FontWeight.SemiBold))
+        if (s != null) {
             Spacer(Modifier.width(12.dp))
             Text(s.phones.arpabet().replace(Regex("\\d"), ""), style = legend(14.sp, C.LegendDim, FontWeight.Medium, 1.5.sp),
                 modifier = Modifier.padding(bottom = 5.dp))
         }
-        Spacer(Modifier.height(4.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+    }
+    Spacer(Modifier.height(4.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        if (s == null || chosen == null) {
+            Text("NO SYLLABLE STARTS ON THIS STEP", style = legend(11.sp, C.LegendDim))
+        } else {
             Text(when (s.stress) { Stress.PRIMARY -> "STRESSED"; Stress.SECONDARY -> "HALF STRESSED"; Stress.NONE -> "UNSTRESSED" },
                 style = legend(11.sp, C.LegendDim))
             Text("${chosen.length} ${if (chosen.length == 1) "STEP" else "STEPS"}", style = legend(11.sp, C.LegendDim))
             if (s.guessed) Text("SPELLING GUESSED", style = legend(11.sp, C.Amber))
         }
-        Spacer(Modifier.height(12.dp))
-        val offset = songLine?.notes?.get(chosen.syllable) ?: 0
-        val base = model.song.note ?: App.voices.info(model.song.voice)?.note ?: 48
-        val repeats = songLine?.stutters?.get(chosen.syllable)
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Column(Modifier.width(76.dp)) {
-                Text("NOTE", style = legend(10.sp, C.LegendDim, spacing = 1.2.sp))
-                Text(noteName(base + offset) + if (offset != 0) "  " + (if (offset > 0) "+$offset" else "$offset") else "",
-                    style = legend(15.sp, C.Legend, FontWeight.Bold, 0.5.sp))
-            }
-            Key("-1", Modifier.weight(1f), height = 40.dp) { model.shiftNote(-1) }
-            Key("+1", Modifier.weight(1f), height = 40.dp) { model.shiftNote(1) }
-            Key("BASE", Modifier.weight(1f), height = 40.dp, textSize = 12.5.sp, enabled = offset != 0) { model.shiftNote(0) }
-        }
-        Spacer(Modifier.height(8.dp))
-        Key(if (repeats == null) "STUTTER" else "STUTTER x$repeats", Modifier.fillMaxWidth(), height = 40.dp, textSize = 12.5.sp,
-            lamp = repeats != null) { model.cycleStutter() }
     }
+    Spacer(Modifier.height(12.dp))
+    val offset = chosen?.let { songLine?.notes?.get(it.syllable) } ?: 0
+    val base = model.song.note ?: App.voices.info(model.song.voice)?.note ?: 48
+    val repeats = chosen?.let { songLine?.stutters?.get(it.syllable) }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.width(76.dp)) {
+            Text("NOTE", style = legend(10.sp, C.LegendDim, spacing = 1.2.sp))
+            Text(noteName(base + offset) + if (offset != 0) "  " + (if (offset > 0) "+$offset" else "$offset") else "",
+                style = legend(15.sp, if (s != null) C.Legend else C.LegendDim, FontWeight.Bold, 0.5.sp))
+        }
+        Key("-1", Modifier.weight(1f), height = 40.dp, enabled = s != null) { model.shiftNote(-1) }
+        Key("+1", Modifier.weight(1f), height = 40.dp, enabled = s != null) { model.shiftNote(1) }
+        Key("BASE", Modifier.weight(1f), height = 40.dp, textSize = 12.5.sp, enabled = offset != 0) { model.shiftNote(0) }
+    }
+    Spacer(Modifier.height(8.dp))
+    Key(if (repeats == null) "STUTTER" else "STUTTER x$repeats", Modifier.fillMaxWidth(), height = 40.dp, textSize = 12.5.sp,
+        lamp = repeats != null, enabled = s != null) { model.cycleStutter() }
     Spacer(Modifier.height(12.dp))
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Key("EARLIER", Modifier.weight(1f), height = 42.dp, enabled = chosen != null) { model.nudge(-1) }
