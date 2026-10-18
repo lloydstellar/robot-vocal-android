@@ -1,0 +1,38 @@
+ROBOT VOCAL 1.0.0, alles voor de Play Store
+Pakketnaam: nl.lloydstellar.robotvocal
+
+WAT ZIT ERIN (map tools/store, het AAB in app/build/outputs/bundle/release)
+  app-release.aab                 het bestand dat je uploadt (ondertekend met de upload-sleutel)
+  icon-512.png                    app-icoon voor de store
+  feature-1024x500.png            feature graphic
+  screen-01..07.png               telefoonscreenshots, in deze volgorde uploaden
+  listing.md                      titel, korte en lange beschrijving (Engels en Nederlands),
+                                  Data safety, contentclassificatie
+  privacy.html                    privacybeleid, zet dit op lloydstellar.nl
+
+STAPPEN IN DE PLAY CONSOLE
+1. Zet privacy.html online, bijvoorbeeld als https://lloydstellar.nl/robotvocal-privacy.html
+2. App maken: naam "Robot Vocal: Text to Speech", standaardtaal Engels (VS),
+   app (geen game), gratis.
+3. Testen en releasen > Interne test (of meteen Productie) > Nieuwe release:
+   app-release.aab uploaden. Play App Signing aanzetten als het gevraagd wordt.
+4. Store-vermelding (Engels): teksten uit listing.md, icoon, feature graphic en
+   de zeven screenshots. Categorie: Muziek en audio.
+5. Vertaling toevoegen: Nederlands, met de Nederlandse teksten uit listing.md.
+6. App-content:
+   - Privacybeleid: de link uit stap 1
+   - Advertenties: nee
+   - Toegang tot de app: alles is zonder inloggen bruikbaar
+   - Contentclassificatie: vragenlijst volgens listing.md, overal nee
+   - Doelgroep: 18+ (of 13+), niet voor kinderen
+   - Gegevensveiligheid: volgens listing.md. Alleen bij SEND TO LIVE gaan
+     audio en een koppel-token naar je eigen LA2L-server, versleuteld, niet gedeeld.
+   - Geen foreground service, dus geen verklaring nodig.
+7. Indienen voor beoordeling.
+
+LET OP
+- De upload-sleutel staat in ~/Work/robot-vocal-android/signing/ en niet in git.
+  Maak er een back-up van: zonder die sleutel kun je geen updates meer uploaden.
+- Bij elke update: versionCode ophogen in app/build.gradle.kts.
+- De app bevat native code (Flite, eSpeak NG); die is gebouwd met NDK r30 en
+  uitgelijnd op 16 KB pagina's, zoals Google Play eist.

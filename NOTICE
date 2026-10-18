@@ -30,5 +30,9 @@ app/src/main/assets/licenses/ and the app shows them under About.
 - The letter-to-sound rules of NRL Report 7948 (1976, public domain), in the
   transcription of whackintalk (https://github.com/joehahndev/whackintalk),
   Copyright 2026 Joe Hahn, MIT License.
+- The chirp table of US patent 4,209,836 as tabulated in MAME
+  (src/devices/sound/tms5110r.hxx), Copyright Frank Palazzolo, Couriersud and
+  Jonathan Gevaryahu, BSD-3-Clause.
+- The plate reverb follows Freeverb by Jezar at Dreampoint (public domain).
 - The fonts Barlow (Copyright 2017 The Barlow Project Authors) and DSEG
   (Copyright 2020 keshikan), SIL Open Font License 1.1.
