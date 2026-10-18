@@ -55,6 +55,7 @@ class VocalTake(
 )
 
 object Renderer {
+    const val RATE = TimingPlanner.SAMPLE_RATE
     const val PEAK = 0.8f
 
     fun render(song: Song, arrangement: Arrangement, engine: VoiceEngine, sampleRate: Int = TimingPlanner.SAMPLE_RATE): VocalTake {

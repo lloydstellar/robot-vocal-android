@@ -18,25 +18,22 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import nl.lloydstellar.robotvocal.App
+import nl.lloydstellar.robotvocal.score.Song
 import java.util.Locale
 
-/** A saved song as the list shows it. */
-class SongSummary(val title: String, val bpm: Double, val voice: String)
-
-/** Until songs are stored, the list holds the three example songs. */
-private val EXAMPLES = listOf(
-    SongSummary("TIN VOICE", 124.0, "FLITE KAL"),
-    SongSummary("NIGHT SHIFT", 96.0, "ESPEAK ROBOSOFT 3"),
-    SongSummary("SATELLITE CALL", 140.0, "FORMANT CHIP"),
-)
-
 @Composable
-fun SongsScreen(onOpen: () -> Unit) {
+fun SongsScreen(onOpen: (Song) -> Unit, onNew: () -> Unit) {
+    val songs by produceState<List<Song>?>(null) { value = withContext(Dispatchers.IO) { App.songs.list() } }
     Column(
         Modifier
             .fillMaxSize()
@@ -47,31 +44,35 @@ fun SongsScreen(onOpen: () -> Unit) {
         Text("LLOYD'S", style = legend(13.sp, C.LegendDim, FontWeight.SemiBold, 2.5.sp))
         Text("ROBOT VOCAL", style = legend(36.sp, C.Legend, FontWeight.Bold, 0.5.sp))
         Spacer(Modifier.height(22.dp))
-        GroupRule("SONGS", trailing = "${EXAMPLES.size}")
+        GroupRule("SONGS", trailing = songs?.size?.toString())
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-            EXAMPLES.forEach { SongRow(it, onOpen) }
+            songs?.forEach { SongRow(it) { onOpen(it) } }
         }
         Row(
             Modifier.fillMaxWidth().padding(vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Key("ABOUT", onClick = {})
-            Key("NEW SONG", Modifier.weight(1f), style = KeyStyle.AMBER, onClick = onOpen)
+            Key("NEW SONG", Modifier.weight(1f), style = KeyStyle.AMBER, onClick = onNew)
         }
     }
 }
 
 @Composable
-private fun SongRow(song: SongSummary, onOpen: () -> Unit) {
+private fun SongRow(song: Song, onOpen: () -> Unit) {
     Column(Modifier.fillMaxWidth().clickable(onClick = onOpen)) {
         Row(
             Modifier.fillMaxWidth().padding(vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                Text(song.title, style = legend(18.sp, C.Legend, FontWeight.Bold, 1.sp))
+                Text(song.title.ifEmpty { "UNTITLED" }, style = legend(18.sp, C.Legend, FontWeight.Bold, 1.sp))
                 Spacer(Modifier.height(2.dp))
-                Text(song.voice, style = legend(12.sp, C.LegendDim, FontWeight.Medium, 1.sp))
+                val voice = App.engine.voices.firstOrNull { it.id == song.voice }?.name ?: ""
+                Text(voice, style = legend(12.sp, C.LegendDim, FontWeight.Medium, 1.sp))
+                song.lines.firstOrNull()?.let {
+                    Spacer(Modifier.height(4.dp))
+                    Text(it.text, style = body(14.sp, C.LegendDim), maxLines = 1)
+                }
             }
             Column(horizontalAlignment = Alignment.End) {
                 Glass(color = C.LedGlass) {

@@ -1,5 +1,6 @@
 package nl.lloydstellar.robotvocal.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,75 +17,64 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import nl.lloydstellar.robotvocal.App
+import nl.lloydstellar.robotvocal.beats.BeatPattern
+import nl.lloydstellar.robotvocal.export.Gallery
+import nl.lloydstellar.robotvocal.export.WavFormat
+import nl.lloydstellar.robotvocal.export.WavWriter
+import nl.lloydstellar.robotvocal.render.Renderer
+import nl.lloydstellar.robotvocal.score.FlowPreset
+import nl.lloydstellar.robotvocal.score.Song
+import nl.lloydstellar.robotvocal.text.Stress
+import nl.lloydstellar.robotvocal.text.arpabet
 import java.util.Locale
 
-private enum class Page(val label: String) { WORDS("WORDS"), STEPS("STEPS"), VOICE("VOICE"), EFFECT("EFFECT"), OUT("OUT") }
-
-/** One placed syllable of the example line, until the real score arrives. */
-private class ExampleSyllable(val text: String, val phonemes: String, val stressed: Boolean, val steps: Int, val rhyme: Boolean = false)
-
-private val EXAMPLE_LINES = listOf(
-    "I am the voice of the machine",
-    "Every word right on the beat",
-    "Turn the dial and push the key",
-    "Robot vocal, talk to me",
-)
-
-/** Line 2 in the Robot 8ths flow: a syllable on every 8th, short and dry, the rhyme held from step 13. */
-private val EXAMPLE_STEPS = mapOf(
-    0 to ExampleSyllable("EV", "EH V", true, 1),
-    2 to ExampleSyllable("RY", "R IY", false, 1),
-    4 to ExampleSyllable("WORD", "W ER D", true, 1),
-    6 to ExampleSyllable("RIGHT", "R AY T", true, 1),
-    8 to ExampleSyllable("ON", "AA N", false, 1),
-    10 to ExampleSyllable("THE", "DH AH", false, 1),
-    12 to ExampleSyllable("BEAT", "B IY T", true, 3, rhyme = true),
-)
-
-private const val EXAMPLE_BPM = 124.0
-
-/**
- * The workplace for one song: displays and transport on top, five pages below.
- * For now a static model of the panel; the score, the voices and the sound
- * follow in the next steps.
- */
+/** The workplace for one song: displays and transport on top, five pages below. */
 @Composable
-fun StudioScreen(onBack: () -> Unit) {
-    var page by remember { mutableStateOf(Page.STEPS) }
-    var playing by remember { mutableStateOf(false) }
-    var loop by remember { mutableStateOf(true) }
-    var selected by remember { mutableIntStateOf(12) }
-    var playStep by remember { mutableIntStateOf(-1) }
+fun StudioScreen(initial: Song, onBack: () -> Unit) {
+    val scope = rememberCoroutineScope()
+    val model = remember(initial.id) { StudioModel(initial, scope) }
+    val player = App.player
+    var playing by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    var tempoOpen by remember { mutableStateOf(false) }
 
-    LaunchedEffect(playing) {
-        if (!playing) {
-            playStep = -1
-            return@LaunchedEffect
+    LaunchedEffect(player.playing) {
+        while (player.playing) {
+            withFrameNanos { }
+            val located = player.position()?.let { model.locate(it) }
+            playing = located
+            if (located != null && located.first != model.line) model.line = located.first
         }
-        val stepMs = (60_000.0 / EXAMPLE_BPM / 4).toLong()
-        var s = 0
-        while (true) {
-            playStep = s
-            delay(stepMs)
-            s = (s + 1) % 16
-            if (s == 0 && !loop) {
-                playing = false
-            }
-        }
+        playing = null
     }
+    val view = LocalView.current
+    DisposableEffect(player.playing) {
+        view.keepScreenOn = player.playing
+        onDispose { view.keepScreenOn = false }
+    }
+    DisposableEffect(Unit) { onDispose { player.stop() } }
 
+    val arranged = model.arrangement?.lines?.getOrNull(model.line)
     Column(
         Modifier
             .fillMaxSize()
@@ -95,46 +85,59 @@ fun StudioScreen(onBack: () -> Unit) {
             Key("SONGS", height = 40.dp, symbol = KeySymbol.BACK, onClick = onBack)
             Spacer(Modifier.weight(1f))
             Column(horizontalAlignment = Alignment.End) {
-                Text("TIN VOICE", style = legend(19.sp, C.Legend, FontWeight.Bold, 1.2.sp))
-                Text("FLITE KAL", style = legend(11.sp, C.LegendDim, FontWeight.Medium, 1.2.sp))
+                Text(model.song.title.ifEmpty { "UNTITLED" }, style = legend(19.sp, C.Legend, FontWeight.Bold, 1.2.sp), maxLines = 1)
+                Text(App.engine.voices.firstOrNull { it.id == model.song.voice }?.name ?: "", style = legend(11.sp, C.LegendDim, FontWeight.Medium, 1.2.sp))
             }
         }
 
         Spacer(Modifier.height(14.dp))
         Glass(Modifier.fillMaxWidth()) {
-            VfdLine(EXAMPLE_LINES[1], Modifier.fillMaxWidth())
+            val text = arranged?.lyric?.text ?: if (model.song.lines.isEmpty()) "TYPE YOUR LYRICS" else ""
+            VfdLine(text, Modifier.fillMaxWidth())
         }
         Spacer(Modifier.height(10.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Readout("BPM", bpmCells(EXAMPLE_BPM), "888.8")
-            Readout("BAR", "1", "8")
-            Readout("STEP", if (playStep >= 0) String.format(Locale.ROOT, "%2d", playStep + 1).replace(' ', '!') else "!!", "88")
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+            Readout("BPM", bpmCells(model.song.bpm), "888.8", Modifier.clickable { tempoOpen = !tempoOpen })
+            val bar = playing?.let { (l, slot) -> (model.arrangement?.lines?.getOrNull(l)?.startBar ?: 0) + slot.floorDiv(16) + 1 }
+                ?: ((arranged?.startBar ?: 0) + 1)
+            Readout("BAR", String.format(Locale.ROOT, "%2d", bar.coerceIn(0, 99)).replace(' ', '!'), "88")
+            val step = playing?.second?.let { Math.floorMod(it, arranged?.placement?.slotsPerBar ?: 16) + 1 }
+            Readout("STEP", step?.let { String.format(Locale.ROOT, "%2d", it).replace(' ', '!') } ?: "!!", "88")
             Spacer(Modifier.weight(1f))
-            Key("TAP", Modifier.width(64.dp), height = 52.dp, onClick = {})
+            TapTempo { model.setBpm(it) }
+        }
+        if (tempoOpen) {
+            Spacer(Modifier.height(8.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf(-5.0 to "-5", -1.0 to "-1", -0.1 to "-0.1", 0.1 to "+0.1", 1.0 to "+1", 5.0 to "+5").forEach { (d, label) ->
+                    Key(label, Modifier.weight(1f), height = 38.dp, textSize = 12.5.sp) { model.setBpm(model.song.bpm + d) }
+                }
+            }
         }
 
         Spacer(Modifier.height(14.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Key("PLAY", Modifier.weight(1.5f), style = KeyStyle.AMBER, symbol = KeySymbol.PLAY, onClick = { playing = true })
-            Key("STOP", Modifier.weight(1f), symbol = KeySymbol.STOP, onClick = { playing = false })
-            Key("LOOP", Modifier.weight(1f), lamp = loop, onClick = { loop = !loop })
+            Key("PLAY", Modifier.weight(1.5f), style = KeyStyle.AMBER, symbol = KeySymbol.PLAY,
+                enabled = model.song.lines.isNotEmpty()) { player.play() }
+            Key("STOP", Modifier.weight(1f), symbol = KeySymbol.STOP) { player.stop() }
+            Key("LOOP", Modifier.weight(1f), lamp = player.loop) { player.loop = !player.loop }
         }
         Spacer(Modifier.height(8.dp))
-        BeatSelector()
+        BeatSelector(model)
 
         Spacer(Modifier.height(16.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Page.entries.forEach { p ->
-                ModeKey(p.label, active = p == page, modifier = Modifier.weight(1f)) { page = p }
-            }
+            Page.entries.forEach { p -> ModeKey(p.label, active = p == model.page, modifier = Modifier.weight(1f)) { model.page = p } }
         }
 
         Spacer(Modifier.height(16.dp))
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-            when (page) {
-                Page.WORDS -> WordsPage()
-                Page.STEPS -> StepsPage(selected, playStep) { selected = it }
-                else -> Text("This page comes in a later build.", style = body(14.sp, C.LegendDim))
+            when (model.page) {
+                Page.WORDS -> WordsPage(model)
+                Page.STEPS -> StepsPage(model, playing)
+                Page.VOICE -> VoicePage(model)
+                Page.EFFECT -> Text("Robot effects arrive in the next build.", style = body(14.sp, C.LegendDim))
+                Page.OUT -> OutPage(model)
             }
             Spacer(Modifier.height(16.dp))
         }
@@ -143,99 +146,263 @@ fun StudioScreen(onBack: () -> Unit) {
 
 /** A red LED readout with its legend printed under the window. */
 @Composable
-private fun Readout(label: String, text: String, ghost: String) {
-    Column {
-        Glass(color = C.LedGlass) {
-            SegmentText(text, ghost, seg7(22.sp), C.SegGhost)
-        }
+private fun Readout(label: String, text: String, ghost: String, modifier: Modifier = Modifier) {
+    Column(modifier) {
+        Glass(color = C.LedGlass) { SegmentText(text, ghost, seg7(22.sp), C.SegGhost) }
         Spacer(Modifier.height(3.dp))
         Text(label, style = legend(10.sp, C.LegendDim, spacing = 1.2.sp))
     }
 }
 
+/** Tap tempo: the average of the last taps, after two or more. */
 @Composable
-private fun BeatSelector() {
+private fun TapTempo(onTempo: (Double) -> Unit) {
+    val taps = remember { mutableStateListOf<Long>() }
+    Key("TAP", Modifier.width(64.dp), height = 52.dp) {
+        val now = System.nanoTime()
+        if (taps.isNotEmpty() && now - taps.last() > 2_000_000_000L) taps.clear()
+        taps += now
+        while (taps.size > 5) taps.removeAt(0)
+        if (taps.size >= 2) {
+            val beat = (taps.last() - taps.first()) / (taps.size - 1) / 1e9
+            onTempo(60.0 / beat)
+        }
+    }
+}
+
+@Composable
+private fun BeatSelector(model: StudioModel) {
+    val patterns = BeatPattern.ALL
+    val index = patterns.indexOfFirst { it.id == model.song.beat }.coerceAtLeast(0)
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Key("", Modifier.width(46.dp), height = 42.dp, symbol = KeySymbol.BACK, onClick = {})
-        Glass(Modifier.weight(1f)) {
-            VfdLine("BEAT ELECTRO 1", Modifier.fillMaxWidth(), size = 13.sp)
+        Key("", Modifier.width(46.dp), height = 42.dp, symbol = KeySymbol.BACK) {
+            model.setBeat(patterns[Math.floorMod(index - 1, patterns.size)].id)
         }
-        Key("", Modifier.width(46.dp), height = 42.dp, symbol = KeySymbol.NEXT, onClick = {})
+        Glass(Modifier.weight(1f)) { VfdLine("BEAT " + patterns[index].name, Modifier.fillMaxWidth(), size = 13.sp) }
+        Key("", Modifier.width(46.dp), height = 42.dp, symbol = KeySymbol.NEXT) {
+            model.setBeat(patterns[Math.floorMod(index + 1, patterns.size)].id)
+        }
+        Key("BEAT", height = 42.dp, lamp = model.beatOn, textSize = 12.5.sp) { model.toggleBeat() }
     }
 }
 
 @Composable
-private fun WordsPage() {
-    GroupRule("LYRICS", trailing = "4 LINES")
+private fun WordsPage(model: StudioModel) {
+    PanelField("TITLE", model.song.title, model::setTitle, capitalization = KeyboardCapitalization.Characters)
+    Spacer(Modifier.height(14.dp))
+    PanelField("LYRICS, ONE LINE PER LINE", model.lyricsText, model::setLyrics, singleLine = false, minLines = 5)
     Spacer(Modifier.height(6.dp))
-    EXAMPLE_LINES.forEachIndexed { i, line ->
-        Row(Modifier.fillMaxWidth().padding(vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
-            Lamp(i == 1)
-            Spacer(Modifier.width(10.dp))
-            Text("${i + 1}", style = legend(12.sp, C.LegendDim), modifier = Modifier.width(16.dp))
-            Text(line, style = body(17.sp, if (i == 1) C.Legend else C.LegendDim))
-        }
+    Text("Type a word in brackets to set its syllables and stress: [ro-BOT].", style = body(13.sp, C.LegendDim))
+    Spacer(Modifier.height(18.dp))
+    GroupRule("FLOW", trailing = "${model.flow.bpm.first} TO ${model.flow.bpm.last} BPM")
+    Spacer(Modifier.height(8.dp))
+    val presets = FlowPreset.ALL
+    val index = presets.indexOf(model.flow).coerceAtLeast(0)
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Key("", Modifier.width(46.dp), height = 42.dp, symbol = KeySymbol.BACK) { model.setFlow(presets[Math.floorMod(index - 1, presets.size)].id) }
+        Glass(Modifier.weight(1f)) { VfdLine(model.flow.name, Modifier.fillMaxWidth(), size = 13.sp) }
+        Key("", Modifier.width(46.dp), height = 42.dp, symbol = KeySymbol.NEXT) { model.setFlow(presets[Math.floorMod(index + 1, presets.size)].id) }
     }
+    Spacer(Modifier.height(6.dp))
+    Text("In the style of ${model.flow.echoes}.", style = body(13.sp, C.LegendDim))
 }
 
 @Composable
-private fun StepsPage(selected: Int, playStep: Int, onSelect: (Int) -> Unit) {
-    GroupRule("LINE 2 OF 4", trailing = "FLOW ROBOT 8THS")
+private fun StepsPage(model: StudioModel, playing: Pair<Int, Int>?) {
+    val arrangement = model.arrangement
+    val arranged = arrangement?.lines?.getOrNull(model.line)
+    if (arranged == null) {
+        Text(if (model.rendering) "Placing the syllables." else "Type your lyrics on the WORDS page first.", style = body(14.sp, C.LegendDim))
+        return
+    }
+    val placement = arranged.placement
+    val slots = placement.slotsPerBar
+    val syllables = arranged.lyric.syllables
+    val byStart = placement.placed.associateBy { it.slot }
+    val locked = model.song.lines.getOrNull(model.line)?.locks?.isNotEmpty() == true
+    val gate = model.song.gate ?: arranged.preset.gate
+    /* a step shows a hold bar when the syllable before it still sounds for most of the step */
+    fun held(slot: Int) = byStart[slot] == null && placement.placed.any { slot > it.slot && it.length * gate - (slot - it.slot) >= 0.75 }
+
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Key("", Modifier.width(46.dp), height = 40.dp, symbol = KeySymbol.BACK, enabled = model.line > 0) { model.line--; model.selectedSlot = 0 }
+        Text("LINE ${model.line + 1} OF ${arrangement.lines.size}", style = legend(13.sp, C.Legend, spacing = 1.4.sp), modifier = Modifier.weight(1f))
+        Text("${placement.bars} ${if (placement.bars == 1) "BAR" else "BARS"}", style = legend(13.sp, C.LegendDim, spacing = 1.4.sp))
+        Key("", Modifier.width(46.dp), height = 40.dp, symbol = KeySymbol.NEXT, enabled = model.line < arrangement.lines.size - 1) { model.line++; model.selectedSlot = 0 }
+    }
     Spacer(Modifier.height(12.dp))
-    for (row in 0 until 2) {
+
+    val pickups = placement.placed.filter { it.slot < 0 }
+    if (pickups.isNotEmpty()) {
+        GroupRule("PICKUP")
+        Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            for (i in 0 until 8) {
-                val s = row * 8 + i
-                val syllable = EXAMPLE_STEPS[s]
+            for (slot in -4 until 0) {
+                val p = byStart[slot]
                 StepKey(
-                    step = s,
-                    syllable = syllable?.text,
-                    hold = isHeld(s),
-                    lamp = s == playStep,
-                    selected = s == selected,
-                    stressed = syllable?.stressed == true,
+                    step = slots + slot,
+                    syllable = p?.let { syllables[it.syllable].text },
+                    hold = false,
+                    lamp = playing?.let { it.first == model.line && it.second == slot } == true,
+                    selected = slot == model.selectedSlot,
+                    stressed = p?.let { syllables[it.syllable].stress == Stress.PRIMARY } == true,
                     modifier = Modifier.weight(1f),
-                    onClick = { onSelect(s) },
-                )
+                ) { model.selectedSlot = slot }
             }
+            repeat(4) { Spacer(Modifier.weight(1f)) }
         }
-        if (row == 0) Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(12.dp))
     }
 
-    Spacer(Modifier.height(18.dp))
-    val chosen = EXAMPLE_STEPS[selected]
-    GroupRule("STEP ${selected + 1}")
+    for (bar in 0 until placement.bars) {
+        if (placement.bars > 1) {
+            GroupRule("BAR ${bar + 1}")
+            Spacer(Modifier.height(8.dp))
+        }
+        val perRow = if (slots == 12) 6 else 8
+        for (row in 0 until slots / perRow) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                for (i in 0 until perRow) {
+                    val slot = bar * slots + row * perRow + i
+                    val p = byStart[slot]
+                    StepKey(
+                        step = if (slots == 12) (row * perRow + i) * 4 / 3 else row * perRow + i,
+                        syllable = p?.let { syllables[it.syllable].text },
+                        hold = held(slot),
+                        lamp = playing?.let { it.first == model.line && it.second == slot } == true,
+                        selected = slot == model.selectedSlot,
+                        stressed = p?.let { syllables[it.syllable].stress == Stress.PRIMARY } == true,
+                        modifier = Modifier.weight(1f),
+                    ) { model.selectedSlot = slot }
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+        }
+    }
+
     Spacer(Modifier.height(8.dp))
+    GroupRule(if (model.selectedSlot < 0) "PICKUP STEP" else "STEP ${Math.floorMod(model.selectedSlot, slots) + 1}")
+    Spacer(Modifier.height(8.dp))
+    val chosen = byStart[model.selectedSlot]
     if (chosen == null) {
         Text("No syllable starts on this step.", style = body(14.sp, C.LegendDim))
     } else {
+        val s = syllables[chosen.syllable]
         Row(verticalAlignment = Alignment.Bottom) {
-            Text(chosen.text, style = body(28.sp, C.Legend, FontWeight.SemiBold))
+            Text(s.text.uppercase(), style = body(28.sp, C.Legend, FontWeight.SemiBold))
             Spacer(Modifier.width(12.dp))
-            Text(chosen.phonemes, style = legend(14.sp, C.LegendDim, FontWeight.Medium, 1.5.sp), modifier = Modifier.padding(bottom = 5.dp))
+            Text(s.phones.arpabet().replace(Regex("\\d"), ""), style = legend(14.sp, C.LegendDim, FontWeight.Medium, 1.5.sp),
+                modifier = Modifier.padding(bottom = 5.dp))
         }
         Spacer(Modifier.height(4.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            if (chosen.stressed) Text("STRESSED", style = legend(11.sp, C.LegendDim))
-            if (chosen.rhyme) Text("RHYME", style = legend(11.sp, C.LegendDim))
-            Text("${chosen.steps} ${if (chosen.steps == 1) "STEP" else "STEPS"} LONG", style = legend(11.sp, C.LegendDim))
+            Text(when (s.stress) { Stress.PRIMARY -> "STRESSED"; Stress.SECONDARY -> "HALF STRESSED"; Stress.NONE -> "UNSTRESSED" },
+                style = legend(11.sp, C.LegendDim))
+            Text("${chosen.length} ${if (chosen.length == 1) "STEP" else "STEPS"}", style = legend(11.sp, C.LegendDim))
+            if (s.guessed) Text("SPELLING GUESSED", style = legend(11.sp, C.Amber))
         }
     }
     Spacer(Modifier.height(12.dp))
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Key("EARLIER", Modifier.weight(1f), height = 42.dp, onClick = {})
-        Key("LATER", Modifier.weight(1f), height = 42.dp, onClick = {})
-        Key("LONGER", Modifier.weight(1f), height = 42.dp, onClick = {})
-        Key("SHORTER", Modifier.weight(1f), height = 42.dp, onClick = {})
+        Key("EARLIER", Modifier.weight(1f), height = 42.dp, enabled = chosen != null) { model.nudge(-1) }
+        Key("LATER", Modifier.weight(1f), height = 42.dp, enabled = chosen != null) { model.nudge(1) }
+        Key("REFLOW", Modifier.weight(1f), height = 42.dp, lamp = locked) { model.reflow() }
     }
     Spacer(Modifier.height(8.dp))
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Key("REST", Modifier.weight(1f), height = 42.dp, onClick = {})
-        Key("STUTTER", Modifier.weight(1f), height = 42.dp, onClick = {})
-        Key("LOCK", Modifier.weight(1f), height = 42.dp, lamp = false, onClick = {})
+        for (bars in 1..4) Key("$bars ${if (bars == 1) "BAR" else "BARS"}", Modifier.weight(1f), height = 40.dp, textSize = 12.5.sp,
+            lamp = placement.bars == bars) { model.setBars(bars) }
     }
 }
 
-/** True when a syllable that started earlier still sounds on step [s]. */
-private fun isHeld(s: Int): Boolean =
-    EXAMPLE_STEPS.any { (start, syllable) -> s > start && s < start + syllable.steps }
+@Composable
+private fun VoicePage(model: StudioModel) {
+    GroupRule("FORMANT VOICES")
+    Spacer(Modifier.height(6.dp))
+    App.engine.voices.forEach { v ->
+        Row(
+            Modifier.fillMaxWidth().clickable { model.setVoice(v.id) }.padding(vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Lamp(v.id == model.song.voice)
+            Spacer(Modifier.width(12.dp))
+            Column {
+                Text(v.name, style = legend(15.sp, C.Legend, FontWeight.Bold, 1.sp))
+                Text(v.description, style = body(13.sp, C.LegendDim))
+            }
+        }
+    }
+    Spacer(Modifier.height(14.dp))
+    val note = model.song.note ?: App.engine.voices.firstOrNull { it.id == model.song.voice }?.note ?: 48
+    GroupRule("PITCH", trailing = noteName(note))
+    Spacer(Modifier.height(8.dp))
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Key("-12", Modifier.weight(1f), height = 42.dp) { model.setNote(note - 12) }
+        Key("-1", Modifier.weight(1f), height = 42.dp) { model.setNote(note - 1) }
+        Key("+1", Modifier.weight(1f), height = 42.dp) { model.setNote(note + 1) }
+        Key("+12", Modifier.weight(1f), height = 42.dp) { model.setNote(note + 12) }
+    }
+}
+
+private val NOTE_NAMES = listOf("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
+
+/** MIDI note 48 is C3. */
+fun noteName(midi: Int) = NOTE_NAMES[Math.floorMod(midi, 12)] + (midi / 12 - 1)
+
+@Composable
+private fun OutPage(model: StudioModel) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var format by remember { mutableStateOf(WavFormat.PCM24) }
+    var status by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    val take = model.take
+
+    GroupRule("WAV FILE", trailing = take?.let { "${it.bars * 4} BEATS" })
+    Spacer(Modifier.height(8.dp))
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        listOf(WavFormat.PCM24 to "24-BIT", WavFormat.PCM16 to "16-BIT", WavFormat.FLOAT32 to "32 FLOAT").forEach { (f, label) ->
+            Key(label, Modifier.weight(1f), height = 40.dp, textSize = 12.5.sp, lamp = format == f) { format = f }
+        }
+    }
+    Spacer(Modifier.height(8.dp))
+    Text("48 kHz, mono, exactly ${take?.bars ?: 0} ${if (take?.bars == 1) "bar" else "bars"} at ${bpmText(model.song.bpm)} BPM. " +
+        "It loops without a gap; the example beat is not in the file.", style = body(13.sp, C.LegendDim))
+    Spacer(Modifier.height(12.dp))
+
+    fun export(share: Boolean) {
+        val audio = model.loopAudio ?: return
+        val t = model.take ?: return
+        busy = true
+        scope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) {
+                    val name = Gallery.fileName(model.song.title, model.song.bpm)
+                    val bytes = WavWriter.bytes(audio, Renderer.RATE, format,
+                        WavWriter.Meta(model.song.title, model.song.bpm, t.bars * 4, loop = true))
+                    name to Gallery.saveWav(context, name, bytes)
+                }
+            }
+            busy = false
+            result.onSuccess { (name, uri) ->
+                status = "Saved in ${Gallery.FOLDER} as \"$name\"."
+                if (share) Gallery.share(context, uri)
+            }.onFailure { status = "Saving failed: ${it.message}" }
+        }
+    }
+
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Key("SAVE WAV", Modifier.weight(1f), enabled = !busy && !model.rendering && take != null) { export(share = false) }
+        Key("SHARE", Modifier.weight(1f), enabled = !busy && !model.rendering && take != null) { export(share = true) }
+    }
+    status?.let {
+        Spacer(Modifier.height(10.dp))
+        Text(it, style = body(13.sp, if (it.startsWith("Saving failed")) C.LedRed else C.LegendDim))
+    }
+    Spacer(Modifier.height(18.dp))
+    GroupRule("ABLETON LIVE")
+    Spacer(Modifier.height(8.dp))
+    Text("Sending to Live with LA2L arrives in a later build.", style = body(13.sp, C.LegendDim))
+}
+
+private fun bpmText(bpm: Double) = if (bpm % 1.0 == 0.0) "${bpm.toInt()}" else String.format(Locale.ROOT, "%.1f", bpm)

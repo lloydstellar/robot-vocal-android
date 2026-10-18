@@ -349,3 +349,37 @@ fun ModeKey(label: String, active: Boolean, modifier: Modifier = Modifier, onCli
         Key(label, Modifier.fillMaxWidth(), height = 38.dp, textSize = 12.5.sp, onClick = onClick)
     }
 }
+
+/**
+ * A text field on the panel: a recessed strip with a printed label above it,
+ * an amber cursor and the readable body font for what the user types.
+ */
+@Composable
+fun PanelField(
+    label: String,
+    value: String,
+    onChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    singleLine: Boolean = true,
+    minLines: Int = 1,
+    capitalization: androidx.compose.ui.text.input.KeyboardCapitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences,
+) {
+    Column(modifier) {
+        Text(label, style = legend(11.sp, C.LegendDim, spacing = 1.4.sp))
+        Spacer(Modifier.height(6.dp))
+        androidx.compose.foundation.text.BasicTextField(
+            value = value,
+            onValueChange = onChange,
+            singleLine = singleLine,
+            minLines = minLines,
+            textStyle = body(17.sp, C.Legend),
+            cursorBrush = androidx.compose.ui.graphics.SolidColor(C.Amber),
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = capitalization),
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(C.Glass, RoundedCornerShape(2.dp))
+                .border(1.dp, C.Rule, RoundedCornerShape(2.dp))
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+        )
+    }
+}

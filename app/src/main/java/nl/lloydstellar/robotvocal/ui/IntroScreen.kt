@@ -20,18 +20,27 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import nl.lloydstellar.robotvocal.App
+import nl.lloydstellar.robotvocal.render.Arranger
+import nl.lloydstellar.robotvocal.render.Renderer
+import nl.lloydstellar.robotvocal.score.Song
+import nl.lloydstellar.robotvocal.score.SongLine
 
 private const val TITLE = "LLOYD'S ROBOT VOCAL"
 
@@ -49,6 +58,14 @@ private val TITLE_SYLLABLES = listOf(
 
 private const val STEP_MS = 125L // a 16th note at 120 BPM
 
+/** "Lloyd's Robot Vocal" by UNIT ONE, its syllables locked to the title steps, as one bar at 120 BPM. */
+private fun titleLoop(): FloatArray {
+    val locks = TITLE_SYLLABLES.keys.sorted().withIndex().associate { (i, step) -> i to step }
+    val song = Song("intro", "Intro", 120.0, listOf(SongLine("Lloyd's Robot Vocal", bars = 1, locks = locks)), voice = "formant/unit1")
+    val arrangement = Arranger.arrange(song, App.lyrics)
+    return Renderer.loop(Renderer.render(song, arrangement, App.engine))
+}
+
 /**
  * The title, played once on the step row: every syllable of "Lloyd's Robot
  * Vocal" lights its step and appears on the display, the way the app places
@@ -59,18 +76,35 @@ fun IntroScreen(onDone: () -> Unit) {
     var step by remember { mutableIntStateOf(-1) }
     var typed by remember { mutableStateOf("") }
     var finished by remember { mutableStateOf(false) }
+    val player = App.player
 
     LaunchedEffect(Unit) {
         delay(450)
-        for (s in 0 until 16) {
-            step = s
-            TITLE_SYLLABLES[s]?.let { typed = TITLE.substring(0, it.shownChars) }
-            delay(STEP_MS)
+        /* the robot says the title in time with the steps; without sound the steps run on their own */
+        val loop = runCatching { withContext(Dispatchers.Default) { titleLoop() } }.getOrNull()
+        val stepFrames = Renderer.RATE * STEP_MS / 1000
+        if (loop != null) {
+            player.loop = false
+            player.setMaterial(loop, FloatArray(0))
+            player.play()
         }
+        val start = System.nanoTime()
+        while (true) {
+            val frame = player.position() ?: ((System.nanoTime() - start) / 1_000_000 * Renderer.RATE / 1000)
+            val s = (frame / stepFrames).toInt()
+            if (s >= 16 || (loop != null && !player.playing && frame > 0)) break
+            if (s != step) {
+                step = s
+                TITLE_SYLLABLES[s]?.let { typed = TITLE.substring(0, it.shownChars) }
+            }
+            withFrameNanos { }
+        }
+        player.loop = true
         step = -1
         typed = TITLE
         finished = true
     }
+    DisposableEffect(Unit) { onDispose { player.stop(); player.loop = true } }
 
     Box(
         Modifier
