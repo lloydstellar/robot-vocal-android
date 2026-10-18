@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import nl.lloydstellar.robotvocal.audio.PreviewPlayer
 import nl.lloydstellar.robotvocal.data.SongStore
+import nl.lloydstellar.robotvocal.export.LiveSender
 import nl.lloydstellar.robotvocal.text.Lexicon
 import nl.lloydstellar.robotvocal.text.Lyrics
 import nl.lloydstellar.robotvocal.voice.EspeakEngine
@@ -23,6 +24,7 @@ object App {
     val voices: VoiceRegistry by lazy { VoiceRegistry(listOf(FormantEngine(), FliteEngine(), EspeakEngine(context))) }
     val songs: SongStore by lazy { SongStore(File(context.filesDir, "songs")) }
     val player: PreviewPlayer by lazy { PreviewPlayer(context) }
+    val live: LiveSender by lazy { LiveSender(context) }
 
     fun init(context: Context) {
         this.context = context.applicationContext

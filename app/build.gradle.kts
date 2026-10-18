@@ -21,6 +21,8 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0.0"
+        /* LA2L's own server; debug builds can point at a local test receiver with -Pla2lServer=http://127.0.0.1:41234/api */
+        buildConfigField("String", "LA2L_SERVER", "\"\"")
         ndk {
             /* phones and the emulator; NDK r28 and later align for 16 KB pages by default */
             abiFilters += listOf("arm64-v8a", "x86_64")
@@ -54,6 +56,7 @@ android {
         }
         debug {
             applicationIdSuffix = ".debug"
+            buildConfigField("String", "LA2L_SERVER", "\"${project.findProperty("la2lServer") ?: ""}\"")
         }
     }
 
@@ -89,6 +92,7 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     debugImplementation("androidx.compose.ui:ui-tooling")
     implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("nl.lloydstellar:la2l-ktx:0.1.0")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")

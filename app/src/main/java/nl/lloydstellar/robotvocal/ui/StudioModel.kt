@@ -52,6 +52,9 @@ class StudioModel(initial: Song, private val scope: CoroutineScope) {
     private var renderJob: Job? = null
     private var saveJob: Job? = null
 
+    /** Pairing with LA2L and sending to Live. */
+    val live = LiveSession(scope)
+
     init {
         render(immediately = true)
     }

@@ -437,10 +437,54 @@ private fun OutPage(model: StudioModel) {
         Spacer(Modifier.height(10.dp))
         Text(it, style = body(13.sp, if (it.startsWith("Saving failed")) C.LedRed else C.LegendDim))
     }
-    Spacer(Modifier.height(18.dp))
-    GroupRule("ABLETON LIVE")
+    Spacer(Modifier.height(22.dp))
+    LiveSection(model, withDry)
+}
+
+/** Send to Live with LA2L: pair once with the code LA2L shows in Live, then one tap per send. */
+@Composable
+private fun LiveSection(model: StudioModel, withDry: Boolean) {
+    val live = model.live
+    var code by remember { mutableStateOf("") }
+    GroupRule("SEND TO LIVE")
     Spacer(Modifier.height(8.dp))
-    Text("Sending to Live with LA2L arrives in a later build.", style = body(13.sp, C.LegendDim))
+    Text("Sends your vocal to Ableton Live with LA2L, as a loop at ${bpmText(model.song.bpm)} BPM.", style = body(13.sp, C.LegendDim))
+    Spacer(Modifier.height(10.dp))
+    when (live.paired) {
+        null -> Unit
+        false -> {
+            Text("In Live, click Pair app in LA2L and type the code it shows.", style = body(14.sp, C.Legend))
+            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PanelField("CODE", code, { code = it.uppercase().take(9) }, Modifier.weight(1f), capitalization = KeyboardCapitalization.Characters)
+                Key("PAIR", Modifier.width(96.dp), enabled = !live.busy && code.count { it.isLetterOrDigit() } == 6) { live.pair(code) }
+            }
+        }
+        true -> {
+            Text("Paired with ${live.device ?: "your computer"}.", style = body(14.sp, C.Legend))
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Key("SEND TO LIVE", Modifier.weight(1f), enabled = !live.busy && !model.rendering && model.take != null) {
+                    model.take?.let { live.send(model.song.title, it, withDry && model.song.effect != "dry") }
+                }
+                Key("UNPAIR", enabled = !live.busy, textSize = 12.5.sp) { live.unpair() }
+            }
+        }
+    }
+    live.status?.let {
+        Spacer(Modifier.height(10.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Lamp(it.startsWith("In Live"), color = C.LedGreen, off = C.LedGreenOff)
+            Spacer(Modifier.width(8.dp))
+            Text(it, style = body(14.sp, C.Legend))
+        }
+    }
+    live.error?.let {
+        Spacer(Modifier.height(10.dp))
+        Text(it, style = body(14.sp, C.LedRed))
+    }
+    Spacer(Modifier.height(14.dp))
+    Text("Ableton and Live are trademarks of Ableton AG, and LA2L is not made by Ableton.", style = body(12.sp, C.LegendFaint))
 }
 
 private fun bpmText(bpm: Double) = if (bpm % 1.0 == 0.0) "${bpm.toInt()}" else String.format(Locale.ROOT, "%.1f", bpm)
