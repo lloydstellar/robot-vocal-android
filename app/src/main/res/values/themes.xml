@@ -1,0 +1,15 @@
+<resources>
+    <style name="Theme.RobotVocal" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/panel</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">always</item>
+        <item name="android:colorAccent">@color/amber</item>
+    </style>
+
+    <style name="Theme.RobotVocal.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/panel</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.RobotVocal</item>
+    </style>
+</resources>

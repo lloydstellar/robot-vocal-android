@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Settings and songs only. The LA2L pairing token is never backed up. -->
+<full-backup-content>
+    <include domain="sharedpref" path="robotvocal.xml" />
+    <include domain="file" path="songs/" />
+</full-backup-content>
