@@ -1,0 +1,19 @@
+Robot Vocal
+Copyright 2026 Lloyd Stellar (https://lloydstellar.nl)
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. See LICENSE.
+
+Additional terms under section 7(e) of the GNU General Public License: this
+license does not grant any rights under trademark law to the name
+"Robot Vocal" as the name of this app, to the app icon, or to the name
+Lloyd Stellar. Builds published by others must use their own name, icon and
+package name.
+
+The audio you make with this app is yours. The license covers the program,
+not its output.
+
+Third-party components keep their own licenses. They are listed, with their
+license texts, in app/src/main/assets/licenses/ once they are added.
