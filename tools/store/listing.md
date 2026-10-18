@@ -22,11 +22,11 @@ Robot Vocal turns typed lyrics into a robot rapping on your beat. Every syllable
 
 Type your lines and pick a flow: robot 8ths, one word per beat, triplets, half-time trap, boom bap with swing, rapid 16ths and more. Each flow places the syllables the way rappers do: stressed syllables on the strong steps, rests at commas, the rhyme on beat four. Move any syllable earlier or later on a step grid like a drum machine's.
 
-Pick one of 26 voices from three kinds of speech synthesis made in the app itself: formant voices from clean to 4-bit chip, the diphone voice of 1990s speech software, and the robot and Klatt voices of eSpeak NG. Then put an effect on it: twenty-band vocoders that sing your chosen note, talkboxes, a speech chip at 8 kHz, ring modulation, combs, phasers, a gate in 16ths. Add a delay on the beat, an echo on the last word of every line, or a plate.
+Pick one of 44 voices from four kinds of speech synthesis made in the app itself: formant voices from clean to 4-bit chip, talking computers of the mid-1980s (some of them sing a tune over your notes), the diphone voice of 1990s speech software, and the robot and Klatt voices of eSpeak NG. Then put an effect on it: twenty-band vocoders that sing your chosen note, talkboxes, a speech chip at 8 kHz, ring modulation, combs, phasers, a gate in 16ths. Add a delay on the beat, an echo on the last word of every line, or a plate.
 
 Check the timing against an example beat: electro, Miami bass, boom bap, half-time, house, techno or a click. The beat is for listening only and never ends up in a file.
 
-SAVE WAV writes 48 kHz mono, 24-bit, 16-bit or 32-bit float, exactly a whole number of bars, with echoes that ring past the end folded back to the start, so it loops without a gap. SEND TO LIVE puts it on a new track in Ableton Live with LA2L, warped to the tempo of your Set.
+SAVE WAV writes 48 kHz mono or stereo, 24-bit, 16-bit or 32-bit float, exactly a whole number of bars, with echoes that ring past the end folded back to the start, so it loops without a gap. SEND TO LIVE puts it on a new track in Ableton Live with LA2L, warped to the tempo of your Set.
 
 No account, no ads, no tracking. The app only goes online when you send to Live. Robot Vocal is free software under the GNU GPL 3.0; the source code is on GitHub.
 
@@ -47,11 +47,11 @@ Robot Vocal maakt van getypte tekst een robot die op jouw beat rapt. Elke letter
 
 Typ je regels en kies een flow: robot-8sten, één woord per tel, triolen, half-time trap, boom bap met swing, snelle 16den en meer. Elke flow zet de lettergrepen zoals rappers dat doen: beklemtoonde lettergrepen op de sterke stappen, een rust bij een komma, het rijm op tel vier. Elke lettergreep schuif je met de hand een stap op of terug, op een rij stappen zoals op een drumcomputer.
 
-Kies een van 26 stemmen uit drie soorten spraaksynthese die de app zelf maakt: formantstemmen van strak tot 4-bit chip, de difoonstem van spraaksoftware uit de jaren 90 en de robot- en Klatt-stemmen van eSpeak NG. Zet er dan een effect op: vocoders met twintig banden die op jouw noot zingen, talkboxes, een spraakchip op 8 kHz, ringmodulatie, kamfilters, phasers, een gate in 16den. Voeg een delay op de beat toe, een echo op het laatste woord van elke regel, of een plate.
+Kies een van 44 stemmen uit vier soorten spraaksynthese die de app zelf maakt: formantstemmen van strak tot 4-bit chip, pratende computers uit het midden van de jaren 80 (een paar zingen een melodie over jouw noten), de difoonstem van spraaksoftware uit de jaren 90 en de robot- en Klatt-stemmen van eSpeak NG. Zet er dan een effect op: vocoders met twintig banden die op jouw noot zingen, talkboxes, een spraakchip op 8 kHz, ringmodulatie, kamfilters, phasers, een gate in 16den. Voeg een delay op de beat toe, een echo op het laatste woord van elke regel, of een plate.
 
 Controleer de timing op een voorbeeldbeat: electro, Miami bass, boom bap, half-time, house, techno of een klik. De beat is alleen om mee te luisteren en komt nooit in een bestand.
 
-SAVE WAV schrijft 48 kHz mono, 24-bit, 16-bit of 32-bit float, precies een heel aantal maten, en echo's die voorbij het einde doorklinken komen terug aan het begin, zodat de loop zonder sprong doorloopt. SEND TO LIVE zet hem met LA2L op een nieuw spoor in Ableton Live, gewarpt op het tempo van je Set.
+SAVE WAV schrijft 48 kHz mono of stereo, 24-bit, 16-bit of 32-bit float, precies een heel aantal maten, en echo's die voorbij het einde doorklinken komen terug aan het begin, zodat de loop zonder sprong doorloopt. SEND TO LIVE zet hem met LA2L op een nieuw spoor in Ableton Live, gewarpt op het tempo van je Set.
 
 Geen account, geen advertenties, geen tracking. De app gaat alleen online als je naar Live stuurt. Robot Vocal is vrije software onder de GNU GPL 3.0; de broncode staat op GitHub.
 

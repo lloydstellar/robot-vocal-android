@@ -23,9 +23,9 @@ send to Live.
 1. **Words.** Lyrics become syllables with stress: CMUdict for 126,052 words, the NRL rules of 1976 for the rest, numbers and initialisms read the way rappers say them. A word in brackets sets its own syllables: `[ro-BOT]`.
 2. **Flow.** Eleven flows put the syllables in slots, from robot 8ths and one word per beat to triplets and half-time trap. The placement weighs where rappers put stressed syllables (the MCFlow corpus), rests at punctuation and the rhyme on beat four. Every syllable can be moved by hand.
 3. **On the beat.** The vowel of every syllable starts exactly on its step; the consonants before it start a little earlier, so the word is heard on the beat. Frames are computed from the absolute position, so nothing drifts.
-4. **Voices.** 26 voices from three engines: our own Klatt formant synthesizer (six characters, from clean to a 4-bit chip), Flite's kal diphone voice, and nineteen voices of eSpeak NG. Flite and the formant voices take our durations directly; eSpeak NG is rendered per word and only the middle of each vowel is stretched.
+4. **Voices.** 44 voices from four engines: our own Klatt formant synthesizer (six characters, from clean to a 4-bit chip), eighteen retro voices ported from [whackintalk](https://github.com/joehahndev/whackintalk) (talking computers of the mid-1980s, seven of which sing a tune over your notes), Flite's kal diphone voice, and nineteen voices of eSpeak NG. Flite, the formant and the retro voices take our durations directly; eSpeak NG is rendered per word and only the middle of each vowel is stretched.
 5. **Effects.** Twenty robot effects (vocoders, talkboxes, a speech chip at 8 kHz, ring modulation and more), movement (ensemble, filter sweeps, beat repeat) and space (delays on the beat, an echo throw on line ends, plates).
-6. **Out.** WAV at 48 kHz, 24-bit, 16-bit or 32-bit float, exactly a whole number of bars with an `acid` tempo chunk, plus a dry stem if you want. Send to Live puts it on a new track, warped to the Set's tempo.
+6. **Out.** WAV at 48 kHz, mono or (with a stereo effect) stereo, 24-bit, 16-bit or 32-bit float, exactly a whole number of bars with an `acid` tempo chunk, plus a dry stem if you want. Send to Live puts it on a new track, warped to the Set's tempo.
 
 ## Build
 
@@ -55,7 +55,8 @@ adb reverse tcp:41234 tcp:41234
 
 The unit tests run on the JVM against the real lexicon: syllables and stress,
 numbers, the placement of every flow, the grid maths against LA2L's frame
-formula, vowel formants measured with LPC, the hiss of s and sh, every effect
+formula, vowel formants measured with LPC, the hiss of s and sh, notes in tune
+to a few cents, every effect
 for range, silence and exact repeats, and delays that land on the beat to the
 sample. Their WAV output goes to `tools/audio/` (not in git) to check by ear.
 
@@ -66,7 +67,7 @@ sample. Their WAV output goes to `tools/audio/` (not in git) to check by ear.
 | `app/src/main/java/.../text` | normaliser, lexicon, letter-to-sound, syllables, lyrics |
 | `app/src/main/java/.../score` | ticks, flow presets, the placement algorithm, the song model |
 | `app/src/main/java/.../render` | timing planner (vowel on the beat), arranger, renderer, loop fold |
-| `app/src/main/java/.../voice` | the formant engine, Flite, eSpeak NG and the voice list |
+| `app/src/main/java/.../voice` | the formant engine, the retro engine, Flite, eSpeak NG and the voice list |
 | `app/src/main/java/.../dsp` | vocoder, talkbox, speech chip, delays, plates and the other effects |
 | `app/src/main/java/.../beats` | the drum synthesizer and the example beats (preview only) |
 | `app/src/main/java/.../export` | WAV writer, saving and sharing, Send to Live |

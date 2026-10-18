@@ -9,9 +9,9 @@ neural voices, which this app leaves out.
 
 Steps 1 to 5, 7 and 9 are built and on GitHub; steps 6 and 8 are partly done.
 
-- Built: the front panel look, lyrics to syllables, eleven flows with the placement algorithm, sample-exact timing with the vowel on the beat, 26 voices (six formant characters, Flite kal, nineteen eSpeak NG voices), 21 robot effects plus movement and space effects (delays on the beat, echo throws, plates), example beats, WAV export, Send to Live with LA2L, About, Manual, icon, store graphics and a signed release build.
-- Changed on the way: the effects are written in Kotlin instead of C++ (offline rendering is fast enough, and every effect is tested on the JVM); the step grid has EARLIER, LATER, REFLOW and bars per line, but no notes per step or stutters per syllable yet.
-- Still open: the ClusterGen voices of Flite (slt, rms, awb need a patch for exact durations), the candidates of section 3.2, notes per step and a chord track.
+- Built: the front panel look, lyrics to syllables, eleven flows with the placement algorithm, sample-exact timing with the vowel on the beat, 44 voices (six formant characters, eighteen retro voices ported from whackintalk, Flite kal, nineteen eSpeak NG voices), 21 robot effects plus movement and space effects (delays on the beat, echo throws, plates, ping-pong, a wide chorus, auto-pan, tape stops, reverse swells), a note and a stutter per syllable, example beats, WAV export in mono or stereo, Send to Live with LA2L, About, Manual, icon, store graphics and a signed release build.
+- Changed on the way: the effects are written in Kotlin instead of C++ (offline rendering is fast enough, and every effect is tested on the JVM). The retro voices keep whackintalk's synthesizer, phoneme table and voice settings, under names of our own; tempo and pitch come from the song, so its speaking rates and intonation are left out.
+- Still open: the ClusterGen voices of Flite (slt, rms, awb need a patch for exact durations), the other candidates of section 3.2 and a chord track.
 
 ## 1. What the app does
 
@@ -49,13 +49,13 @@ ships named combinations, and the user can combine any voice with any effect.
 | Flite, CMU ARCTIC voices slt, rms, awb, bdl, clb, jmk, ksp | Seven buzzy statistical voices, male and female, some accented | Exact, same hooks | BSD-style |
 | eSpeak NG, a curated set of its 104 variants (robosoft 1 to 8, klatt 1 to 6, whisper, croak and others) | Sharp formant voices, very robotic, very clear | The engine reports phoneme onsets but takes no durations, so each word is rendered and then placed and stretched (section 6.4) | GPL-3.0-or-later |
 | Our own formant synth | A Klatt synthesizer with our own phoneme tables, in several characters: clean unit, 8-bit chip, coarse 1970s allophone steps, sung monotone in the spirit of Kraftwerk's Robovox | Exact: we compute every frame | Ours (GPL); based on klatt-syn (MIT) and the Holmes tables of rsynth (GPL) |
+| whackintalk, ported to Kotlin | Eighteen voices after the talking computers of the mid-1980s: one Klatt synthesizer with the KLGLOTT88 source, from a flat machine to a whisper, seven of them singing a tune | Exact: every phoneme becomes elements with our start and end, with a new frame every millisecond | MIT |
 | LPC chip voice | The sound of the Speak & Spell: any voice above re-encoded into 10-pole LPC frames at 8 kHz with chirp excitation and 4 to 5 bit coefficients, played through a TMS5220-style lattice | Exact, 25 ms frames with pitch per frame | MAME tables (BSD-3), our own encoder. No Texas Instruments word data |
 
 That gives around 40 distinct base voices before effects.
 
 ### 3.2 Candidates for later versions
 
-- whackintalk (MIT): 18 MacinTalk-style voices including the "Zarvox" robot, port to Kotlin. New project (September 2026), single author: review the code first.
 - rsynth (GPL): the 1990s Unix `say` voice; takes exact durations.
 - MBROLA with the en1 voice: the en1 terms say "for any purpose", the engine is AGPL-3.0, which GPLv3 allows. Read the en1 licence text in full before it ships.
 - hts_engine with the ARCTIC slt voice: smooth 48 kHz vocoder voice, exact timing; the voice is CC BY 3.0, so it needs a credit in the app.
@@ -296,6 +296,6 @@ Each step ends with a commit, a build on the Pixel 8 and something Lloyd can hea
 
 - eSpeak NG's phoneme onset times and the vowel stretch need to be measured; if they are not tight enough, eSpeak NG voices render per syllable instead.
 - The feel value and the flow weights come from literature and need tuning by ear.
-- whackintalk and narrator-ts are new single-author projects; review before use.
+- narrator-ts is a new single-author project; review before use. whackintalk was reviewed before the port: it implements published work (Klatt 1980, KLGLOTT88, Peterson and Barney) and holds no code or data from Apple; only its voice names were Apple's, and the app uses its own.
 - Default warp mode in Live (Complex Pro or Beats) is a listening test in Live.
 - Speed and memory on the Pixel 8 are not measured yet; rendering is offline, so slow means waiting, not glitches.

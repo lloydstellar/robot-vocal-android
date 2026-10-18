@@ -27,9 +27,11 @@ app/src/main/assets/licenses/ and the app shows them under About.
   Sources in app/src/main/cpp/flite.
 - CMUdict (https://github.com/cmusphinx/cmudict), Copyright Carnegie Mellon
   University, BSD-2-Clause style. Packed into app/src/main/assets/lexicon.
-- The letter-to-sound rules of NRL Report 7948 (1976, public domain), in the
-  transcription of whackintalk (https://github.com/joehahndev/whackintalk),
-  Copyright 2026 Joe Hahn, MIT License.
+- whackintalk (https://github.com/joehahndev/whackintalk), Copyright 2026 Joe
+  Hahn, MIT License. Its formant synthesizer, phoneme table and voice settings
+  are ported to Kotlin in app/src/main/java/nl/lloydstellar/robotvocal/voice/retro,
+  and its transcription of the letter-to-sound rules of NRL Report 7948 (1976,
+  public domain) is in app/src/main/java/nl/lloydstellar/robotvocal/text.
 - The chirp table of US patent 4,209,836 as tabulated in MAME
   (src/devices/sound/tms5110r.hxx), Copyright Frank Palazzolo, Couriersud and
   Jonathan Gevaryahu, BSD-3-Clause.

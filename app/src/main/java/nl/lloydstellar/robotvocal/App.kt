@@ -11,6 +11,7 @@ import nl.lloydstellar.robotvocal.voice.EspeakEngine
 import nl.lloydstellar.robotvocal.voice.FliteEngine
 import nl.lloydstellar.robotvocal.voice.VoiceRegistry
 import nl.lloydstellar.robotvocal.voice.formant.FormantEngine
+import nl.lloydstellar.robotvocal.voice.retro.RetroEngine
 import java.io.File
 import kotlin.concurrent.thread
 
@@ -21,7 +22,7 @@ object App {
 
     val lexicon: Lexicon by lazy { Lexicon.read(context.assets.open(Lexicon.ASSET)) }
     val lyrics: Lyrics by lazy { Lyrics(lexicon) }
-    val voices: VoiceRegistry by lazy { VoiceRegistry(listOf(FormantEngine(), FliteEngine(), EspeakEngine(context))) }
+    val voices: VoiceRegistry by lazy { VoiceRegistry(listOf(FormantEngine(), RetroEngine(), FliteEngine(), EspeakEngine(context))) }
     val songs: SongStore by lazy { SongStore(File(context.filesDir, "songs")) }
     val player: PreviewPlayer by lazy { PreviewPlayer(context) }
     val live: LiveSender by lazy { LiveSender(context) }

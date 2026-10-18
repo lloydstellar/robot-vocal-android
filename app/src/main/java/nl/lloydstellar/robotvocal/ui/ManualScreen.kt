@@ -30,11 +30,12 @@ private val TOPICS = listOf(
         "The vowel of every syllable starts exactly on its step; the consonants before it start a little earlier, so the word " +
         "sounds on the beat. Tap a step to see its syllable, then move it EARLIER or LATER: the rest of the line stays where it is. " +
         "REFLOW lets the flow place the line again. The number of bars sets how much room a line gets."),
-    Topic("VOICE", "Twenty-six voices from three kinds of speech synthesis: our own formant voices, the kal voice of Flite and " +
-        "the voices of eSpeak NG. The pitch sets the note the voice speaks on, and the note the vocoders and talkboxes sing."),
+    Topic("VOICE", "44 voices from four speech engines: our own formant voices, the retro voices of whackintalk (talking " +
+        "computers of the mid-1980s; some of them sing a tune over your notes), the kal voice of Flite and the voices of eSpeak NG. " +
+        "The pitch sets the note the voice speaks on, and the note the vocoders and talkboxes sing."),
     Topic("EFFECT", "Twenty robot effects: vocoders after the hardware of the late 1970s, talkboxes, a speech chip at 8 kHz, ring " +
         "modulation, combs, phasers, gates in 16ths. Effects that move, move in bars, so they stay in time."),
-    Topic("OUT", "SAVE WAV writes the vocal to Music/Robot Vocal: 48 kHz, mono, exactly a whole number of bars, so it loops without " +
+    Topic("OUT", "SAVE WAV writes the vocal to Music/Robot Vocal: 48 kHz, mono (stereo when a stereo effect is on), exactly a whole number of bars, so it loops without " +
         "a gap. Sound that rings past the end is folded to the start, and a pickup before bar 1 to the end. The example beat is " +
         "never in the file. SEND TO LIVE puts it in Ableton Live with LA2L, warped to your Set's tempo."),
     Topic("TEMPO", "Tap the BPM display to change the tempo in steps, or tap TAP in time. Use the tempo of your Live Set: then the " +

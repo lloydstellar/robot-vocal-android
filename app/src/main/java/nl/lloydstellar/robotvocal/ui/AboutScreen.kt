@@ -100,7 +100,7 @@ fun AboutScreen(onBack: () -> Unit) {
 
                 Section("CREDITS")
                 Paragraph("Made by Lloyd Stellar. Voices: eSpeak NG by Jonathan Duddington, Reece Dunn and others; Flite and its kal voice " +
-                    "by Carnegie Mellon University; the formant voices are our own. Pronunciations from CMUdict (Carnegie Mellon " +
+                    "by Carnegie Mellon University; the retro voices are a port of whackintalk by Joe Hahn; the formant voices are our own. Pronunciations from CMUdict (Carnegie Mellon " +
                     "University) and the NRL letter-to-sound rules of 1976. The chirp of the spelling chip comes from US patent " +
                     "4,209,836, as tabulated in MAME. Fonts: Barlow by Jeremy Tribby and DSEG by keshikan, under the SIL Open Font License.")
                 Paragraph("Ableton and Live are trademarks of Ableton AG. LA2L is Lloyd's App2Live and is not made by Ableton.")
