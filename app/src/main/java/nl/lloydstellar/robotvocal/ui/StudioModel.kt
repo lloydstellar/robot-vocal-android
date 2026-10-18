@@ -81,6 +81,8 @@ class StudioModel(initial: Song, private val scope: CoroutineScope) {
 
     fun setNote(note: Int) = change(song.copy(note = note.coerceIn(28, 76)))
 
+    fun setEffect(id: String) = change(song.copy(effect = id))
+
     fun setBeat(id: String) {
         change(song.copy(beat = id))
     }

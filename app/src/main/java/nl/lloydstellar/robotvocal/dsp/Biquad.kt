@@ -38,6 +38,15 @@ class Biquad private constructor(
             return make((1 + c) / 2, -(1 + c), (1 + c) / 2, 1 + alpha, -2 * c, 1 - alpha)
         }
 
+        /** A bell: [gainDb] around [freq], flat elsewhere. */
+        fun peaking(freq: Double, q: Double, gainDb: Double, rate: Int): Biquad {
+            val a = Math.pow(10.0, gainDb / 40)
+            val w = 2 * PI * freq / rate
+            val alpha = sin(w) / (2 * q)
+            val c = cos(w)
+            return make(1 + alpha * a, -2 * c, 1 - alpha * a, 1 + alpha / a, -2 * c, 1 - alpha / a)
+        }
+
         /** Band-pass with 0 dB at the centre. */
         fun bandPass(freq: Double, q: Double, rate: Int): Biquad {
             val w = 2 * PI * freq / rate

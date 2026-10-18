@@ -19,6 +19,8 @@ data class Song(
     val lines: List<SongLine>,
     val flow: String = FlowPreset.DEFAULT.id,
     val voice: String = "formant/unit1",
+    /** A robot effect from [nl.lloydstellar.robotvocal.dsp.RobotPresets]. */
+    val effect: String = "dry",
     /** MIDI note of the monotone voice; null: the voice's own. */
     val note: Int? = null,
     /** Null: the flow preset's swing and gate. */

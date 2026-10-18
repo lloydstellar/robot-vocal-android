@@ -39,6 +39,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import nl.lloydstellar.robotvocal.App
 import nl.lloydstellar.robotvocal.beats.BeatPattern
+import nl.lloydstellar.robotvocal.dsp.RobotPresets
 import nl.lloydstellar.robotvocal.export.Gallery
 import nl.lloydstellar.robotvocal.export.WavFormat
 import nl.lloydstellar.robotvocal.export.WavWriter
@@ -86,7 +87,13 @@ fun StudioScreen(initial: Song, onBack: () -> Unit) {
             Spacer(Modifier.weight(1f))
             Column(horizontalAlignment = Alignment.End) {
                 Text(model.song.title.ifEmpty { "UNTITLED" }, style = legend(19.sp, C.Legend, FontWeight.Bold, 1.2.sp), maxLines = 1)
-                Text(App.voices.info(model.song.voice)?.let { "${it.name}  ${it.engine}" } ?: "", style = legend(11.sp, C.LegendDim, FontWeight.Medium, 1.2.sp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(App.voices.info(model.song.voice)?.name ?: "", style = legend(11.sp, C.LegendDim, FontWeight.Medium, 1.2.sp))
+                    Spacer(Modifier.width(10.dp))
+                    Lamp(model.rendering, size = 6.dp)
+                    Spacer(Modifier.width(5.dp))
+                    Text("BUSY", style = legend(11.sp, C.LegendDim, FontWeight.Medium, 1.2.sp))
+                }
             }
         }
 
@@ -136,7 +143,7 @@ fun StudioScreen(initial: Song, onBack: () -> Unit) {
                 Page.WORDS -> WordsPage(model)
                 Page.STEPS -> StepsPage(model, playing)
                 Page.VOICE -> VoicePage(model)
-                Page.EFFECT -> Text("Robot effects arrive in the next build.", style = body(14.sp, C.LegendDim))
+                Page.EFFECT -> EffectPage(model)
                 Page.OUT -> OutPage(model)
             }
             Spacer(Modifier.height(16.dp))
@@ -346,6 +353,27 @@ private fun VoicePage(model: StudioModel) {
     }
 }
 
+@Composable
+private fun EffectPage(model: StudioModel) {
+    GroupRule("ROBOT EFFECT", trailing = "${RobotPresets.ALL.size}")
+    Spacer(Modifier.height(6.dp))
+    RobotPresets.ALL.forEach { p ->
+        Row(
+            Modifier.fillMaxWidth().clickable { model.setEffect(p.id) }.padding(vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Lamp(p.id == model.song.effect)
+            Spacer(Modifier.width(12.dp))
+            Column {
+                Text(p.name, style = legend(15.sp, C.Legend, FontWeight.Bold, 1.sp))
+                Text(p.description, style = body(13.sp, C.LegendDim))
+            }
+        }
+    }
+    Spacer(Modifier.height(8.dp))
+    Text("The vocoders and talkboxes sing on the note set on the VOICE page.", style = body(13.sp, C.LegendDim))
+}
+
 private val NOTE_NAMES = listOf("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
 
 /** MIDI note 48 is C3. */
@@ -356,6 +384,7 @@ private fun OutPage(model: StudioModel) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var format by remember { mutableStateOf(WavFormat.PCM24) }
+    var withDry by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     val take = model.take
@@ -368,6 +397,9 @@ private fun OutPage(model: StudioModel) {
         }
     }
     Spacer(Modifier.height(8.dp))
+    Key("DRY STEM TOO", Modifier.fillMaxWidth(), height = 40.dp, textSize = 12.5.sp, lamp = withDry,
+        enabled = model.song.effect != "dry") { withDry = !withDry }
+    Spacer(Modifier.height(8.dp))
     Text("48 kHz, mono, exactly ${take?.bars ?: 0} ${if (take?.bars == 1) "bar" else "bars"} at ${bpmText(model.song.bpm)} BPM. " +
         "It loops without a gap; the example beat is not in the file.", style = body(13.sp, C.LegendDim))
     Spacer(Modifier.height(12.dp))
@@ -379,10 +411,14 @@ private fun OutPage(model: StudioModel) {
         scope.launch {
             val result = runCatching {
                 withContext(Dispatchers.IO) {
+                    val meta = WavWriter.Meta(model.song.title, model.song.bpm, t.bars * 4, loop = true)
                     val name = Gallery.fileName(model.song.title, model.song.bpm)
-                    val bytes = WavWriter.bytes(audio, Renderer.RATE, format,
-                        WavWriter.Meta(model.song.title, model.song.bpm, t.bars * 4, loop = true))
-                    name to Gallery.saveWav(context, name, bytes)
+                    val uri = Gallery.saveWav(context, name, WavWriter.bytes(audio, Renderer.RATE, format, meta))
+                    if (withDry && model.song.effect != "dry") {
+                        val dryName = Gallery.fileName(model.song.title, model.song.bpm, " dry")
+                        Gallery.saveWav(context, dryName, WavWriter.bytes(Renderer.loop(t, dry = true), Renderer.RATE, format, meta))
+                    }
+                    name to uri
                 }
             }
             busy = false

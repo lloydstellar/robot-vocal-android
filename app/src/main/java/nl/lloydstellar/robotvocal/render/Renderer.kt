@@ -1,5 +1,7 @@
 package nl.lloydstellar.robotvocal.render
 
+import nl.lloydstellar.robotvocal.dsp.FxContext
+import nl.lloydstellar.robotvocal.dsp.RobotPresets
 import nl.lloydstellar.robotvocal.score.FlowPlacer
 import nl.lloydstellar.robotvocal.score.FlowPreset
 import nl.lloydstellar.robotvocal.score.LinePlacement
@@ -48,6 +50,8 @@ object Arranger {
  */
 class VocalTake(
     val samples: FloatArray,
+    /** The voice before the robot effect, the same length and origin: the dry stem. */
+    val dry: FloatArray,
     val origin: Long,
     val loopFrames: Long,
     val bpm: Double,
@@ -82,11 +86,35 @@ object Renderer {
             }
         }
         val loopFrames = Ticks.loopFrames(arrangement.bars * 4, song.bpm, sampleRate)
-        if (phones.isEmpty()) return VocalTake(FloatArray(loopFrames.toInt()), 0, loopFrames, song.bpm, arrangement.bars, phones)
+        if (phones.isEmpty()) {
+            val silence = FloatArray(loopFrames.toInt())
+            return VocalTake(silence, silence, 0, loopFrames, song.bpm, arrangement.bars, phones)
+        }
         val timed = endBeforeTheLoopComesAround(phones, loopFrames, sampleRate)
         val rendered = engine.render(timed, song.voice, sampleRate, seed = song.id.hashCode())
-        normalise(rendered.samples)
-        return VocalTake(rendered.samples, rendered.origin, loopFrames, song.bpm, arrangement.bars, timed)
+        /* room for what an effect lets ring on (echoes, combs) */
+        val dry = rendered.samples.copyOf(rendered.samples.size + sampleRate)
+        val preset = RobotPresets.byId(song.effect)
+        val ctx = FxContext(sampleRate, song.bpm, rendered.origin, song.id.hashCode()) { frame -> pitchAt(timed, frame) }
+        val wet = preset.effect?.process(dry, ctx) ?: dry.copyOf()
+        normalise(dry)
+        normalise(wet)
+        return VocalTake(wet, dry, rendered.origin, loopFrames, song.bpm, arrangement.bars, timed)
+    }
+
+    /** The planned pitch at a song frame: the phone sounding there, else the one before. */
+    private fun pitchAt(phones: List<TimedPhone>, frame: Long): Double {
+        var lo = 0
+        var hi = phones.size - 1
+        var found = 0
+        while (lo <= hi) {
+            val mid = (lo + hi) ushr 1
+            if (phones[mid].start <= frame) {
+                found = mid
+                lo = mid + 1
+            } else hi = mid - 1
+        }
+        return phones[found].pitchHz
     }
 
     /**
@@ -120,12 +148,13 @@ object Renderer {
      * pickup, the consonants before the first beat) is added to the end. Looped,
      * every vowel stays on its beat.
      */
-    fun loop(take: VocalTake): FloatArray {
+    fun loop(take: VocalTake, dry: Boolean = false): FloatArray {
         val n = take.loopFrames.toInt()
         val out = FloatArray(n)
-        for (i in take.samples.indices) {
+        val samples = if (dry) take.dry else take.samples
+        for (i in samples.indices) {
             val frame = take.origin + i
-            out[Math.floorMod(frame, take.loopFrames).toInt()] += take.samples[i]
+            out[Math.floorMod(frame, take.loopFrames).toInt()] += samples[i]
         }
         normalise(out)
         return out

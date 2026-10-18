@@ -75,7 +75,7 @@ class SongStore(private val dir: File) {
         fun toJson(s: Song): JSONObject = JSONObject().apply {
             put("version", 1)
             put("id", s.id); put("title", s.title); put("bpm", s.bpm)
-            put("flow", s.flow); put("voice", s.voice); put("feel", s.feel)
+            put("flow", s.flow); put("voice", s.voice); put("effect", s.effect); put("feel", s.feel)
             put("beat", s.beat); put("beatLevel", s.beatLevel)
             s.note?.let { put("note", it) }
             s.swing?.let { put("swing", it) }
@@ -110,6 +110,7 @@ class SongStore(private val dir: File) {
                 },
                 flow = o.optString("flow", "robot8"),
                 voice = o.optString("voice", "formant/unit1"),
+                effect = o.optString("effect", "dry"),
                 note = if (o.has("note")) o.getInt("note") else null,
                 swing = if (o.has("swing")) o.getDouble("swing") else null,
                 gate = if (o.has("gate")) o.getDouble("gate") else null,
