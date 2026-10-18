@@ -54,4 +54,32 @@ object RobotPresets {
     )
 
     fun byId(id: String): RobotPreset = ALL.firstOrNull { it.id == id } ?: ALL.first()
+
+    /** Movement on top of the robot: wider, swept or stuttered, always in bars. */
+    val MOTION = listOf(
+        RobotPreset("none", "NONE", "No movement", null),
+        RobotPreset("ensemble", "ENSEMBLE", "Three slowly drifting copies, as the choir ensembles of 1979", Ensemble()),
+        RobotPreset("sweep", "FILTER SWEEP", "A resonant filter that opens and closes every two bars", FilterSweep()),
+        RobotPreset("sweepfast", "FILTER WAH", "The filter sweep once a bar, narrower", FilterSweep(barsPerCycle = 1.0, low = 500.0, high = 4000.0, q = 5.0)),
+        RobotPreset("repeat", "BEAT REPEAT", "The last beat of every two bars stutters in 16ths", BeatRepeat(everyBars = 2, fillSixteenths = 4)),
+        RobotPreset("repeat8", "BEAT REPEAT 8", "A roll over the last half bar of every four bars", BeatRepeat(everyBars = 4, fillSixteenths = 8)),
+    )
+
+    /** Room around the voice: delays on the beat and plates, whose tails fold into the loop. */
+    val SPACE = listOf(
+        RobotPreset("none", "NONE", "No delay, no reverb", null),
+        RobotPreset("delay316", "DELAY 3/16", "Echoes a dotted 8th apart, the classic electro bounce", BeatDelay(beats = 0.75, feedback = 0.4)),
+        RobotPreset("delay14", "DELAY 1/4", "Echoes on every beat", BeatDelay(beats = 1.0, feedback = 0.35)),
+        RobotPreset("delay18", "DELAY 1/8", "Quick echoes on the 8ths, tucked behind the voice", BeatDelay(beats = 0.5, feedback = 0.3, mix = 0.28)),
+        RobotPreset("dub", "DUB DELAY", "Long, dark repeats on the beat that slowly fall apart", BeatDelay(beats = 1.0, feedback = 0.62, highCut = 2200.0, saturate = true)),
+        RobotPreset("throw", "ECHO THROW", "Only the last word of every line echoes, as in rap records", BeatDelay(beats = 0.75, feedback = 0.5, mix = 0.5, onlyLineEnds = true)),
+        RobotPreset("plate", "SMALL PLATE", "A short, bright plate", Plate(room = 0.5, damping = 0.5, mix = 0.16)),
+        RobotPreset("bigplate", "BIG PLATE", "A long plate for held words", Plate(room = 0.86, damping = 0.35, mix = 0.22, preDelayMs = 25.0)),
+        RobotPreset("gated", "GATED PLATE", "A big plate cut off an 8th after the voice, 1980s style", Plate(room = 0.88, damping = 0.3, mix = 0.35, gateBeats = 0.5)),
+        RobotPreset("delayplate", "DELAY AND PLATE", "Dotted 8th echoes in a small plate", Chain(listOf(BeatDelay(beats = 0.75, feedback = 0.35, mix = 0.3), Plate(room = 0.55, mix = 0.14)))),
+    )
+
+    fun motion(id: String): RobotPreset = MOTION.firstOrNull { it.id == id } ?: MOTION.first()
+
+    fun space(id: String): RobotPreset = SPACE.firstOrNull { it.id == id } ?: SPACE.first()
 }

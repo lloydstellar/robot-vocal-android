@@ -81,7 +81,7 @@ fun IntroScreen(onDone: () -> Unit) {
     LaunchedEffect(Unit) {
         delay(450)
         /* the robot says the title in time with the steps; without sound the steps run on their own */
-        val loop = runCatching { withContext(Dispatchers.Default) { titleLoop() } }.getOrNull()
+        val loop = if (!App.spokenIntro) null else runCatching { withContext(Dispatchers.Default) { titleLoop() } }.getOrNull()
         val stepFrames = Renderer.RATE * STEP_MS / 1000
         if (loop != null) {
             player.loop = false

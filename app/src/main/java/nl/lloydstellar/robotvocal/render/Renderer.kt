@@ -92,11 +92,17 @@ object Renderer {
         }
         val timed = endBeforeTheLoopComesAround(phones, loopFrames, sampleRate)
         val rendered = engine.render(timed, song.voice, sampleRate, seed = song.id.hashCode())
-        /* room for what an effect lets ring on (echoes, combs) */
-        val dry = rendered.samples.copyOf(rendered.samples.size + sampleRate)
-        val preset = RobotPresets.byId(song.effect)
-        val ctx = FxContext(sampleRate, song.bpm, rendered.origin, song.id.hashCode()) { frame -> pitchAt(timed, frame) }
-        val wet = preset.effect?.process(dry, ctx) ?: dry.copyOf()
+        /* room for what the effects let ring on, folded into the loop afterwards: seconds for echoes and plates */
+        val ringOut = if (song.space != "none") sampleRate * 4 else sampleRate / 2
+        val dry = rendered.samples.copyOf(rendered.samples.size + ringOut)
+        val lineEnds = timed.filter { it.lineEnd }.groupBy { it.syllable }.values.map { it.first().start..it.last().end }
+        val ctx = FxContext(sampleRate, song.bpm, rendered.origin, song.id.hashCode(), lineEnds) { frame -> pitchAt(timed, frame) }
+        val chain = listOfNotNull(
+            RobotPresets.byId(song.effect).effect,
+            RobotPresets.motion(song.motion).effect,
+            RobotPresets.space(song.space).effect,
+        )
+        val wet = if (chain.isEmpty()) dry.copyOf() else chain.fold(dry) { buffer, fx -> fx.process(buffer, ctx) }
         normalise(dry)
         normalise(wet)
         return VocalTake(wet, dry, rendered.origin, loopFrames, song.bpm, arrangement.bars, timed)

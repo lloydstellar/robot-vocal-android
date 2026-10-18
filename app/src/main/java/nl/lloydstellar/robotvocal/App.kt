@@ -26,6 +26,13 @@ object App {
     val player: PreviewPlayer by lazy { PreviewPlayer(context) }
     val live: LiveSender by lazy { LiveSender(context) }
 
+    private val prefs by lazy { context.getSharedPreferences("robotvocal", Context.MODE_PRIVATE) }
+
+    /** The robot says "Lloyd's Robot Vocal" in the intro. */
+    var spokenIntro: Boolean
+        get() = prefs.getBoolean("spokenIntro", true)
+        set(value) = prefs.edit().putBoolean("spokenIntro", value).apply()
+
     fun init(context: Context) {
         this.context = context.applicationContext
         /* read the 2.7 MB dictionary while the intro plays */

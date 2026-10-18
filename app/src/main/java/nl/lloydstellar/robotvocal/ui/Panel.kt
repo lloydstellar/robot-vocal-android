@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -381,5 +382,32 @@ fun PanelField(
                 .border(1.dp, C.Rule, RoundedCornerShape(2.dp))
                 .padding(horizontal = 12.dp, vertical = 10.dp),
         )
+    }
+}
+
+/** A question over the screen with two keys; a tap beside it means no. */
+@Composable
+fun ConfirmPrompt(title: String, text: String, yes: String, onYes: () -> Unit, onNo: () -> Unit) {
+    Box(
+        Modifier.fillMaxSize().background(C.Panel.copy(alpha = 0.92f))
+            .clickable(remember { MutableInteractionSource() }, null, onClick = onNo),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            Modifier.padding(horizontal = 20.dp).fillMaxWidth()
+                .clickable(remember { MutableInteractionSource() }, null) { }
+                .background(C.PanelHigh, RoundedCornerShape(3.dp))
+                .border(1.dp, C.Rule, RoundedCornerShape(3.dp))
+                .padding(18.dp),
+        ) {
+            Text(title, style = legend(18.sp, C.Legend, FontWeight.Bold, 1.2.sp))
+            Spacer(Modifier.height(10.dp))
+            Text(text, style = body(14.sp, C.LegendDim))
+            Spacer(Modifier.height(18.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Key("CANCEL", Modifier.weight(1f), onClick = onNo)
+                Key(yes, Modifier.weight(1f), lamp = true, onClick = onYes)
+            }
+        }
     }
 }

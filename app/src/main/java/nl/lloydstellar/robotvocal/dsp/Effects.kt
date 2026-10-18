@@ -15,9 +15,14 @@ class FxContext(
     /** Song frame of sample 0 of the buffer (negative when the take starts before bar 1). */
     val origin: Long,
     val seed: Int,
+    /** Song frames of the last syllable of every line, for echo throws. */
+    val lineEnds: List<LongRange> = emptyList(),
     private val pitch: (Long) -> Double,
 ) {
     fun pitchAt(sample: Int): Double = pitch(origin + sample)
+
+    /** Samples in [beats] beats at the song's tempo. */
+    fun beats(beats: Double): Int = (beats * 60.0 / bpm * rate).roundToInt()
 
     /** Position in bars (0.0 = bar 1 beat 1) of a sample of the buffer. */
     fun bars(sample: Int): Double = (origin + sample) * bpm / (60.0 * rate * 4)

@@ -28,8 +28,10 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import nl.lloydstellar.robotvocal.ui.AboutScreen
 import nl.lloydstellar.robotvocal.ui.C
 import nl.lloydstellar.robotvocal.ui.IntroScreen
+import nl.lloydstellar.robotvocal.ui.ManualScreen
 import nl.lloydstellar.robotvocal.ui.RobotVocalTheme
 import nl.lloydstellar.robotvocal.ui.SongsScreen
 import nl.lloydstellar.robotvocal.ui.StudioScreen
@@ -50,14 +52,14 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-enum class Screen { INTRO, SONGS, STUDIO }
+enum class Screen { INTRO, SONGS, STUDIO, MANUAL, ABOUT }
 
 @Composable
 private fun Root() {
     var screen by rememberSaveable { mutableStateOf(Screen.INTRO) }
     var songId by rememberSaveable { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    if (screen == Screen.STUDIO) BackHandler { screen = Screen.SONGS }
+    if (screen != Screen.INTRO && screen != Screen.SONGS) BackHandler { screen = Screen.SONGS }
 
     Box(Modifier.fillMaxSize().background(C.Panel)) {
         AnimatedContent(
@@ -69,6 +71,8 @@ private fun Root() {
                 Screen.INTRO -> IntroScreen(onDone = { screen = Screen.SONGS })
                 Screen.SONGS -> SongsScreen(
                     onOpen = { songId = it.id; screen = Screen.STUDIO },
+                    onManual = { screen = Screen.MANUAL },
+                    onAbout = { screen = Screen.ABOUT },
                     onNew = {
                         scope.launch {
                             val song = withContext(Dispatchers.IO) { App.songs.newSong().also { App.songs.save(it) } }
@@ -79,9 +83,11 @@ private fun Root() {
                 )
                 Screen.STUDIO -> {
                     val song = remember(songId) { songId?.let { App.songs.load(it) } }
-                    if (song != null) StudioScreen(song, onBack = { screen = Screen.SONGS })
+                    if (song != null) StudioScreen(song, onBack = { screen = Screen.SONGS }, onDeleted = { screen = Screen.SONGS })
                     else LaunchedEffect(Unit) { screen = Screen.SONGS }
                 }
+                Screen.MANUAL -> ManualScreen(onBack = { screen = Screen.SONGS })
+                Screen.ABOUT -> AboutScreen(onBack = { screen = Screen.SONGS })
             }
         }
     }

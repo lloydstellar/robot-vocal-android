@@ -21,6 +21,9 @@ data class Song(
     val voice: String = "formant/unit1",
     /** A robot effect from [nl.lloydstellar.robotvocal.dsp.RobotPresets]. */
     val effect: String = "dry",
+    /** Movement and room after the robot effect: [nl.lloydstellar.robotvocal.dsp.RobotPresets.MOTION] and SPACE. */
+    val motion: String = "none",
+    val space: String = "none",
     /** MIDI note of the monotone voice; null: the voice's own. */
     val note: Int? = null,
     /** Null: the flow preset's swing and gate. */

@@ -60,6 +60,9 @@ class StudioModel(initial: Song, private val scope: CoroutineScope) {
     }
 
     val flow: FlowPreset get() = FlowPreset.byId(song.flow)
+
+    /** Any effect on the voice, so a dry stem means something. */
+    val hasEffects: Boolean get() = song.effect != "dry" || song.motion != "none" || song.space != "none"
     val swing: Double get() = song.swing ?: flow.swing
 
     /* ------------------------------------------------------------ edits */
@@ -86,6 +89,10 @@ class StudioModel(initial: Song, private val scope: CoroutineScope) {
 
     fun setEffect(id: String) = change(song.copy(effect = id))
 
+    fun setMotion(id: String) = change(song.copy(motion = id))
+
+    fun setSpace(id: String) = change(song.copy(space = id))
+
     fun setBeat(id: String) {
         change(song.copy(beat = id))
     }
@@ -108,6 +115,13 @@ class StudioModel(initial: Song, private val scope: CoroutineScope) {
         val locks = placed.associate { it.syllable to it.slot } + (placed[k].syllable to target)
         selectedSlot = target
         setLine(line) { it.copy(locks = locks, bars = arranged.placement.bars) }
+    }
+
+    /** Removes the song from the phone. */
+    fun delete() {
+        saveJob?.cancel()
+        renderJob?.cancel()
+        App.songs.delete(song.id)
     }
 
     /** Lets the flow place the line again. */

@@ -32,7 +32,7 @@ import nl.lloydstellar.robotvocal.score.Song
 import java.util.Locale
 
 @Composable
-fun SongsScreen(onOpen: (Song) -> Unit, onNew: () -> Unit) {
+fun SongsScreen(onOpen: (Song) -> Unit, onNew: () -> Unit, onManual: () -> Unit, onAbout: () -> Unit) {
     val songs by produceState<List<Song>?>(null) { value = withContext(Dispatchers.IO) { App.songs.list() } }
     Column(
         Modifier
@@ -52,6 +52,8 @@ fun SongsScreen(onOpen: (Song) -> Unit, onNew: () -> Unit) {
             Modifier.fillMaxWidth().padding(vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
+            Key("MANUAL", onClick = onManual)
+            Key("ABOUT", onClick = onAbout)
             Key("NEW SONG", Modifier.weight(1f), style = KeyStyle.AMBER, onClick = onNew)
         }
     }

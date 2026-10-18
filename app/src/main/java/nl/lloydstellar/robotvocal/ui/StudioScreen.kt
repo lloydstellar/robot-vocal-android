@@ -2,6 +2,7 @@ package nl.lloydstellar.robotvocal.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -39,6 +40,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import nl.lloydstellar.robotvocal.App
 import nl.lloydstellar.robotvocal.beats.BeatPattern
+import nl.lloydstellar.robotvocal.dsp.RobotPreset
 import nl.lloydstellar.robotvocal.dsp.RobotPresets
 import nl.lloydstellar.robotvocal.export.Gallery
 import nl.lloydstellar.robotvocal.export.WavFormat
@@ -52,7 +54,7 @@ import java.util.Locale
 
 /** The workplace for one song: displays and transport on top, five pages below. */
 @Composable
-fun StudioScreen(initial: Song, onBack: () -> Unit) {
+fun StudioScreen(initial: Song, onBack: () -> Unit, onDeleted: () -> Unit) {
     val scope = rememberCoroutineScope()
     val model = remember(initial.id) { StudioModel(initial, scope) }
     val player = App.player
@@ -76,6 +78,8 @@ fun StudioScreen(initial: Song, onBack: () -> Unit) {
     DisposableEffect(Unit) { onDispose { player.stop() } }
 
     val arranged = model.arrangement?.lines?.getOrNull(model.line)
+    var confirmDelete by remember { mutableStateOf(false) }
+    Box(Modifier.fillMaxSize()) {
     Column(
         Modifier
             .fillMaxSize()
@@ -140,7 +144,7 @@ fun StudioScreen(initial: Song, onBack: () -> Unit) {
         Spacer(Modifier.height(16.dp))
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             when (model.page) {
-                Page.WORDS -> WordsPage(model)
+                Page.WORDS -> WordsPage(model) { confirmDelete = true }
                 Page.STEPS -> StepsPage(model, playing)
                 Page.VOICE -> VoicePage(model)
                 Page.EFFECT -> EffectPage(model)
@@ -148,6 +152,14 @@ fun StudioScreen(initial: Song, onBack: () -> Unit) {
             }
             Spacer(Modifier.height(16.dp))
         }
+    }
+    if (confirmDelete) ConfirmPrompt(
+        title = "DELETE THIS SONG?",
+        text = "\"${model.song.title.ifEmpty { "UNTITLED" }}\" goes from this phone: its lyrics and its settings. Files you saved stay where they are.",
+        yes = "DELETE",
+        onYes = { player.stop(); model.delete(); onDeleted() },
+        onNo = { confirmDelete = false },
+    )
     }
 }
 
@@ -194,7 +206,7 @@ private fun BeatSelector(model: StudioModel) {
 }
 
 @Composable
-private fun WordsPage(model: StudioModel) {
+private fun WordsPage(model: StudioModel, onDelete: () -> Unit) {
     PanelField("TITLE", model.song.title, model::setTitle, capitalization = KeyboardCapitalization.Characters)
     Spacer(Modifier.height(14.dp))
     PanelField("LYRICS, ONE LINE PER LINE", model.lyricsText, model::setLyrics, singleLine = false, minLines = 5)
@@ -212,6 +224,10 @@ private fun WordsPage(model: StudioModel) {
     }
     Spacer(Modifier.height(6.dp))
     Text("In the style of ${model.flow.echoes}.", style = body(13.sp, C.LegendDim))
+    Spacer(Modifier.height(28.dp))
+    GroupRule("SONG")
+    Spacer(Modifier.height(8.dp))
+    Key("DELETE SONG", Modifier.fillMaxWidth(), height = 42.dp, textSize = 12.5.sp, onClick = onDelete)
 }
 
 @Composable
@@ -355,14 +371,27 @@ private fun VoicePage(model: StudioModel) {
 
 @Composable
 private fun EffectPage(model: StudioModel) {
-    GroupRule("ROBOT EFFECT", trailing = "${RobotPresets.ALL.size}")
+    PresetList("ROBOT", RobotPresets.ALL, model.song.effect, model::setEffect)
+    Text("The vocoders and talkboxes sing on the note set on the VOICE page.", style = body(13.sp, C.LegendDim))
+    Spacer(Modifier.height(18.dp))
+    PresetList("MOTION", RobotPresets.MOTION, model.song.motion, model::setMotion)
+    Spacer(Modifier.height(18.dp))
+    PresetList("SPACE", RobotPresets.SPACE, model.song.space, model::setSpace)
+    Text("Delays run on the beat of the song. In the WAV, echoes and reverb that ring past the end come back at the start, " +
+        "so the loop runs on without a jump.", style = body(13.sp, C.LegendDim))
+}
+
+/** One lamp per choice, the chosen one lit, as a rotary selector would show it. */
+@Composable
+private fun PresetList(title: String, presets: List<RobotPreset>, selected: String, onSelect: (String) -> Unit) {
+    GroupRule(title, trailing = "${presets.size}")
     Spacer(Modifier.height(6.dp))
-    RobotPresets.ALL.forEach { p ->
+    presets.forEach { p ->
         Row(
-            Modifier.fillMaxWidth().clickable { model.setEffect(p.id) }.padding(vertical = 9.dp),
+            Modifier.fillMaxWidth().clickable { onSelect(p.id) }.padding(vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Lamp(p.id == model.song.effect)
+            Lamp(p.id == selected)
             Spacer(Modifier.width(12.dp))
             Column {
                 Text(p.name, style = legend(15.sp, C.Legend, FontWeight.Bold, 1.sp))
@@ -370,8 +399,7 @@ private fun EffectPage(model: StudioModel) {
             }
         }
     }
-    Spacer(Modifier.height(8.dp))
-    Text("The vocoders and talkboxes sing on the note set on the VOICE page.", style = body(13.sp, C.LegendDim))
+    Spacer(Modifier.height(6.dp))
 }
 
 private val NOTE_NAMES = listOf("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
@@ -398,7 +426,7 @@ private fun OutPage(model: StudioModel) {
     }
     Spacer(Modifier.height(8.dp))
     Key("DRY STEM TOO", Modifier.fillMaxWidth(), height = 40.dp, textSize = 12.5.sp, lamp = withDry,
-        enabled = model.song.effect != "dry") { withDry = !withDry }
+        enabled = model.hasEffects) { withDry = !withDry }
     Spacer(Modifier.height(8.dp))
     Text("48 kHz, mono, exactly ${take?.bars ?: 0} ${if (take?.bars == 1) "bar" else "bars"} at ${bpmText(model.song.bpm)} BPM. " +
         "It loops without a gap; the example beat is not in the file.", style = body(13.sp, C.LegendDim))
@@ -414,7 +442,7 @@ private fun OutPage(model: StudioModel) {
                     val meta = WavWriter.Meta(model.song.title, model.song.bpm, t.bars * 4, loop = true)
                     val name = Gallery.fileName(model.song.title, model.song.bpm)
                     val uri = Gallery.saveWav(context, name, WavWriter.bytes(audio, Renderer.RATE, format, meta))
-                    if (withDry && model.song.effect != "dry") {
+                    if (withDry && model.hasEffects) {
                         val dryName = Gallery.fileName(model.song.title, model.song.bpm, " dry")
                         Gallery.saveWav(context, dryName, WavWriter.bytes(Renderer.loop(t, dry = true), Renderer.RATE, format, meta))
                     }
@@ -465,7 +493,7 @@ private fun LiveSection(model: StudioModel, withDry: Boolean) {
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Key("SEND TO LIVE", Modifier.weight(1f), enabled = !live.busy && !model.rendering && model.take != null) {
-                    model.take?.let { live.send(model.song.title, it, withDry && model.song.effect != "dry") }
+                    model.take?.let { live.send(model.song.title, it, withDry && model.hasEffects) }
                 }
                 Key("UNPAIR", enabled = !live.busy, textSize = 12.5.sp) { live.unpair() }
             }
