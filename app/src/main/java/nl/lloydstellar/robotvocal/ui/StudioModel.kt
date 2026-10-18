@@ -137,7 +137,7 @@ class StudioModel(initial: Song, private val scope: CoroutineScope) {
             if (!immediately) delay(180)
             val result = withContext(Dispatchers.Default) {
                 val arranged = Arranger.arrange(s, App.lyrics)
-                val take = Renderer.render(s, arranged, App.engine)
+                val take = Renderer.render(s, arranged, App.voices)
                 val loop = Renderer.loop(take)
                 val swing = s.swing ?: FlowPreset.byId(s.flow).swing
                 val beat = BeatRenderer.render(BeatPattern.byId(s.beat), arranged.bars, s.bpm, swing, Renderer.RATE)

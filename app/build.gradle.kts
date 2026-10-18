@@ -13,6 +13,7 @@ val keystoreProps = Properties().apply {
 android {
     namespace = "nl.lloydstellar.robotvocal"
     compileSdk = 37
+    ndkVersion = "30.0.16248370"
 
     defaultConfig {
         applicationId = "nl.lloydstellar.robotvocal"
@@ -20,6 +21,17 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0.0"
+        ndk {
+            /* phones and the emulator; NDK r28 and later align for 16 KB pages by default */
+            abiFilters += listOf("arm64-v8a", "x86_64")
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
 
     signingConfigs {

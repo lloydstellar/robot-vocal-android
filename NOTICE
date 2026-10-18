@@ -15,5 +15,20 @@ package name.
 The audio you make with this app is yours. The license covers the program,
 not its output.
 
-Third-party components keep their own licenses. They are listed, with their
-license texts, in app/src/main/assets/licenses/ once they are added.
+Third-party components keep their own licenses. Their license texts are in
+app/src/main/assets/licenses/ and the app shows them under About.
+
+- eSpeak NG 1.52.0 (https://github.com/espeak-ng/espeak-ng), GPL-3.0-or-later,
+  with Unicode data under the Unicode license and parts under BSD-2-Clause and
+  Apache-2.0. Sources in app/src/main/cpp/espeak-ng, English data in
+  app/src/main/assets/espeak-ng-data.
+- Flite 2.2 (https://github.com/festvox/flite) with the cmu_us_kal voice and the
+  CMU lexicon, Copyright Carnegie Mellon University, a BSD-style license.
+  Sources in app/src/main/cpp/flite.
+- CMUdict (https://github.com/cmusphinx/cmudict), Copyright Carnegie Mellon
+  University, BSD-2-Clause style. Packed into app/src/main/assets/lexicon.
+- The letter-to-sound rules of NRL Report 7948 (1976, public domain), in the
+  transcription of whackintalk (https://github.com/joehahndev/whackintalk),
+  Copyright 2026 Joe Hahn, MIT License.
+- The fonts Barlow (Copyright 2017 The Barlow Project Authors) and DSEG
+  (Copyright 2020 keshikan), SIL Open Font License 1.1.

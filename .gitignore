@@ -15,3 +15,6 @@ tools/shots/*
 tools/audio/
 tools/sim/
 tools/parity/node_modules/
+
+# native build output of AGP
+.cxx/

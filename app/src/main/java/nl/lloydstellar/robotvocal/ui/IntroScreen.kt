@@ -63,7 +63,7 @@ private fun titleLoop(): FloatArray {
     val locks = TITLE_SYLLABLES.keys.sorted().withIndex().associate { (i, step) -> i to step }
     val song = Song("intro", "Intro", 120.0, listOf(SongLine("Lloyd's Robot Vocal", bars = 1, locks = locks)), voice = "formant/unit1")
     val arrangement = Arranger.arrange(song, App.lyrics)
-    return Renderer.loop(Renderer.render(song, arrangement, App.engine))
+    return Renderer.loop(Renderer.render(song, arrangement, App.voices))
 }
 
 /**

@@ -67,7 +67,7 @@ private fun SongRow(song: Song, onOpen: () -> Unit) {
             Column(Modifier.weight(1f)) {
                 Text(song.title.ifEmpty { "UNTITLED" }, style = legend(18.sp, C.Legend, FontWeight.Bold, 1.sp))
                 Spacer(Modifier.height(2.dp))
-                val voice = App.engine.voices.firstOrNull { it.id == song.voice }?.name ?: ""
+                val voice = App.voices.info(song.voice)?.name ?: ""
                 Text(voice, style = legend(12.sp, C.LegendDim, FontWeight.Medium, 1.sp))
                 song.lines.firstOrNull()?.let {
                     Spacer(Modifier.height(4.dp))

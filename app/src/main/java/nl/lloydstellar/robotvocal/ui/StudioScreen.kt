@@ -86,7 +86,7 @@ fun StudioScreen(initial: Song, onBack: () -> Unit) {
             Spacer(Modifier.weight(1f))
             Column(horizontalAlignment = Alignment.End) {
                 Text(model.song.title.ifEmpty { "UNTITLED" }, style = legend(19.sp, C.Legend, FontWeight.Bold, 1.2.sp), maxLines = 1)
-                Text(App.engine.voices.firstOrNull { it.id == model.song.voice }?.name ?: "", style = legend(11.sp, C.LegendDim, FontWeight.Medium, 1.2.sp))
+                Text(App.voices.info(model.song.voice)?.let { "${it.name}  ${it.engine}" } ?: "", style = legend(11.sp, C.LegendDim, FontWeight.Medium, 1.2.sp))
             }
         }
 
@@ -317,23 +317,25 @@ private fun StepsPage(model: StudioModel, playing: Pair<Int, Int>?) {
 
 @Composable
 private fun VoicePage(model: StudioModel) {
-    GroupRule("FORMANT VOICES")
-    Spacer(Modifier.height(6.dp))
-    App.engine.voices.forEach { v ->
-        Row(
-            Modifier.fillMaxWidth().clickable { model.setVoice(v.id) }.padding(vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Lamp(v.id == model.song.voice)
-            Spacer(Modifier.width(12.dp))
-            Column {
-                Text(v.name, style = legend(15.sp, C.Legend, FontWeight.Bold, 1.sp))
-                Text(v.description, style = body(13.sp, C.LegendDim))
+    App.voices.all.groupBy { it.engine }.forEach { (engine, voices) ->
+        GroupRule(engine, trailing = "${voices.size}")
+        Spacer(Modifier.height(6.dp))
+        voices.forEach { v ->
+            Row(
+                Modifier.fillMaxWidth().clickable { model.setVoice(v.id) }.padding(vertical = 9.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Lamp(v.id == model.song.voice)
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(v.name, style = legend(15.sp, C.Legend, FontWeight.Bold, 1.sp))
+                    Text(v.description, style = body(13.sp, C.LegendDim))
+                }
             }
         }
+        Spacer(Modifier.height(14.dp))
     }
-    Spacer(Modifier.height(14.dp))
-    val note = model.song.note ?: App.engine.voices.firstOrNull { it.id == model.song.voice }?.note ?: 48
+    val note = model.song.note ?: App.voices.info(model.song.voice)?.note ?: 48
     GroupRule("PITCH", trailing = noteName(note))
     Spacer(Modifier.height(8.dp))
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

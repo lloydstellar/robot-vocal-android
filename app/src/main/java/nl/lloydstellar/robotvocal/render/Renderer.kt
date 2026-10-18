@@ -8,6 +8,7 @@ import nl.lloydstellar.robotvocal.score.Ticks
 import nl.lloydstellar.robotvocal.text.LyricLine
 import nl.lloydstellar.robotvocal.text.Lyrics
 import nl.lloydstellar.robotvocal.voice.VoiceEngine
+import nl.lloydstellar.robotvocal.voice.VoiceRegistry
 import kotlin.math.abs
 import kotlin.math.pow
 
@@ -58,10 +59,15 @@ object Renderer {
     const val RATE = TimingPlanner.SAMPLE_RATE
     const val PEAK = 0.8f
 
+    fun render(song: Song, arrangement: Arrangement, voices: VoiceRegistry, sampleRate: Int = TimingPlanner.SAMPLE_RATE): VocalTake =
+        render(song, arrangement, voices.engineFor(song.voice), sampleRate)
+
     fun render(song: Song, arrangement: Arrangement, engine: VoiceEngine, sampleRate: Int = TimingPlanner.SAMPLE_RATE): VocalTake {
         val planner = TimingPlanner(sampleRate)
         val note = song.note ?: engine.voices.firstOrNull { it.id == song.voice }?.note ?: 48
         val hz = 440.0 * 2.0.pow((note - 69) / 12.0)
+        var syllableBase = 0
+        var wordBase = 0
         val phones = arrangement.lines.flatMap { line ->
             val settings = TimingPlanner.Settings(
                 bpm = song.bpm,
@@ -70,7 +76,10 @@ object Renderer {
                 gate = song.gate ?: line.preset.gate,
                 feel = song.feel,
             )
-            planner.plan(line.lyric.syllables, line.placement, line.startTick, settings) { hz }
+            planner.plan(line.lyric.syllables, line.placement, line.startTick, settings, syllableBase, wordBase) { hz }.also {
+                syllableBase += line.lyric.syllables.size
+                wordBase += line.lyric.words.size
+            }
         }
         val loopFrames = Ticks.loopFrames(arrangement.bars * 4, song.bpm, sampleRate)
         if (phones.isEmpty()) return VocalTake(FloatArray(loopFrames.toInt()), 0, loopFrames, song.bpm, arrangement.bars, phones)

@@ -16,7 +16,9 @@ data class TimedPhone(
     val end: Long,
     val stressed: Boolean,
     val pitchHz: Double,
+    /** The syllable and the word in the whole song, counted from 0. */
     val syllable: Int,
+    val word: Int = syllable,
     val vowel: Boolean = ph.vowel,
 )
 
@@ -46,6 +48,8 @@ class TimingPlanner(private val sampleRate: Int = SAMPLE_RATE) {
         placement: LinePlacement,
         lineStartTick: Int,
         settings: Settings,
+        syllableBase: Int = 0,
+        wordBase: Int = 0,
         pitchOf: (syllable: Int) -> Double,
     ): List<TimedPhone> {
         val perSlot = Ticks.perSlot(placement.slotsPerBar)
@@ -78,7 +82,7 @@ class TimingPlanner(private val sampleRate: Int = SAMPLE_RATE) {
             val vowelStart = beat + lead
             var t = vowelStart - onset.sum()
             for ((i, phone) in syllable.onset.withIndex()) {
-                out += TimedPhone(phone.ph, t, t + onset[i], stressed, pitchOf(p.syllable), p.syllable)
+                out += TimedPhone(phone.ph, t, t + onset[i], stressed, pitchOf(p.syllable), syllableBase + p.syllable, wordBase + syllable.word)
                 t += onset[i]
             }
 
@@ -90,10 +94,10 @@ class TimingPlanner(private val sampleRate: Int = SAMPLE_RATE) {
                 coda = compress(syllable.coda.map { it.ph }, coda, max(0L, limit - vowelStart - minVowel))
             }
             val vowelEnd = max(vowelStart + ms(20.0), limit - coda.sum())
-            out += TimedPhone(syllable.vowel.ph, vowelStart, vowelEnd, stressed, pitchOf(p.syllable), p.syllable)
+            out += TimedPhone(syllable.vowel.ph, vowelStart, vowelEnd, stressed, pitchOf(p.syllable), syllableBase + p.syllable, wordBase + syllable.word)
             t = vowelEnd
             for ((i, phone) in syllable.coda.withIndex()) {
-                out += TimedPhone(phone.ph, t, t + coda[i], stressed, pitchOf(p.syllable), p.syllable)
+                out += TimedPhone(phone.ph, t, t + coda[i], stressed, pitchOf(p.syllable), syllableBase + p.syllable, wordBase + syllable.word)
                 t += coda[i]
             }
             previousEnd = t
