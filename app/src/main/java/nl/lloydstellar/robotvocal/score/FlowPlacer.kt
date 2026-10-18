@@ -41,6 +41,7 @@ object FlowPlacer {
 
     private const val CAP = 4.0
     private const val INF = Double.MAX_VALUE / 4
+    private const val SHORTEST_UNSTRESSED_MS = 95.0
 
     fun place(
         syllables: List<Syllable>,
@@ -115,7 +116,7 @@ object FlowPlacer {
                     for (pd in 0..maxHold) {
                         val c = cost[i - 1][pj][pd]
                         if (c >= INF) continue
-                        val v = c + ioi(syl[i - 1], d, pd, slotMs)
+                        val v = c + ioi(syl[i - 1], d, pd, slotMs, preset.shortestMs)
                         if (v < bestPrev) {
                             bestPrev = v
                             bestD = pd
@@ -200,8 +201,8 @@ object FlowPlacer {
     }
 
     /** The cost of syllable [x] lasting [d] slots when the one before it lasted [pd] (0: none before). */
-    private fun ioi(x: Syllable, d: Int, pd: Int, slotMs: Double): Double {
-        var c = if (d * slotMs < 120) 5.0 else 0.0
+    private fun ioi(x: Syllable, d: Int, pd: Int, slotMs: Double, shortestMs: Double): Double {
+        var c = tooFast(x, d * slotMs, shortestMs)
         if (!x.wordEnd) c += 0.8 * max(0, d - 2)
         if (x.wordEnd && x.pause == null) c += 0.4 * max(0, d - 2)
         if (x.pause == Pause.COMMA && d < 3) c += 1.5
@@ -209,6 +210,22 @@ object FlowPlacer {
         if (x.heavy && x.pause != null && d == 1) c += 1.0
         if (pd > 0 && d != pd && d != 2 * pd && 2 * d != pd) c += 0.3
         return c
+    }
+
+    /**
+     * About 120 ms is where syllables stop being easy to follow (London 2012,
+     * via Manabe 2019; docs/research/03). That holds for the stressed
+     * syllables, the ones heard as the beat; an unstressed one ("the", "to",
+     * "-ter") is said shorter and passes quicker, so its limit is lower. Under
+     * the limit the cost rises over 30 ms to its full 5.0. So the 16ths of a
+     * flow stay up to about 140 BPM on unstressed syllables and are given up
+     * gradually, instead of all at once at 125 BPM, where a 16th drops under
+     * 120 ms.
+     */
+    private fun tooFast(x: Syllable, ms: Double, stressedMs: Double): Double {
+        val shortest = if (x.stress == Stress.NONE) min(SHORTEST_UNSTRESSED_MS, stressedMs) else stressedMs
+        if (ms >= shortest) return 0.0
+        return 5.0 * min(1.0, (shortest - ms) / 30.0)
     }
 
     /** Beats skipped between two onsets, unless the earlier syllable ends a phrase. */

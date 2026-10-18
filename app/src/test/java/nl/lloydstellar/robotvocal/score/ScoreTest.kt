@@ -91,6 +91,17 @@ class ScoreTest {
         assertEquals(listOf(-2, 0, 2, 4, 6, 8, 10, 12), slots)
     }
 
+    @Test fun `electro and half-time flows keep their 16ths up to 140 BPM`() {
+        for ((flow, line) in listOf("electro332" to "Computer love on the dance floor tonight", "halftime" to "Breaking the code of the synthesizer")) {
+            val syllables = lyrics.line(line).syllables
+            val slow = FlowPlacer.place(syllables, FlowPreset.byId(flow), 120.0)
+            val fast = FlowPlacer.place(syllables, FlowPreset.byId(flow), 140.0)
+            assertEquals("$flow: bars", slow.bars, fast.bars)
+            val sixteenths = fast.placed.zipWithNext().count { (a, b) -> b.slot - a.slot == 1 }
+            assertTrue("$flow at 140 BPM: $sixteenths syllables a 16th apart", sixteenths >= 2)
+        }
+    }
+
     @Test fun `the last word of a line can carry the rhyme`() {
         val syllables = lyrics.line("Turn the dial, push the key, robot vocal talk to me").syllables
         val placement = FlowPlacer.place(syllables, FlowPreset.byId("robot8"), 120.0)
