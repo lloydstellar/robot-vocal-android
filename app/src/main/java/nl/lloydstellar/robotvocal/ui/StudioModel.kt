@@ -38,7 +38,7 @@ class StudioModel(initial: Song, private val scope: CoroutineScope) {
         private set
     var take by mutableStateOf<VocalTake?>(null)
         private set
-    var loopAudio: FloatArray? = null
+    var loopAudio: Array<FloatArray>? = null
         private set
     var rendering by mutableStateOf(true)
         private set
@@ -124,6 +124,29 @@ class StudioModel(initial: Song, private val scope: CoroutineScope) {
         App.songs.delete(song.id)
     }
 
+    /** The syllable that starts on the selected slot of the current line, or null. */
+    private fun selectedSyllable(): Int? =
+        arrangement?.lines?.getOrNull(line)?.placement?.placed?.firstOrNull { it.slot == selectedSlot }?.syllable
+
+    /** Moves the selected syllable [semitones] up or down; 0 sets it back to the song's note. */
+    fun shiftNote(semitones: Int) {
+        val syllable = selectedSyllable() ?: return
+        setLine(line) { l ->
+            val now = l.notes[syllable] ?: 0
+            val next = if (semitones == 0) 0 else (now + semitones).coerceIn(-24, 24)
+            l.copy(notes = if (next == 0) l.notes - syllable else l.notes + (syllable to next))
+        }
+    }
+
+    /** Off, two, four, eight repeats of the start of the selected syllable, and round again. */
+    fun cycleStutter() {
+        val syllable = selectedSyllable() ?: return
+        setLine(line) { l ->
+            val next = when (l.stutters[syllable]) { null -> 2; 2 -> 4; 4 -> 8; else -> null }
+            l.copy(stutters = if (next == null) l.stutters - syllable else l.stutters + (syllable to next))
+        }
+    }
+
     /** Lets the flow place the line again. */
     fun reflow() = setLine(line) { it.copy(locks = emptyMap(), bars = null) }
 
@@ -172,7 +195,7 @@ class StudioModel(initial: Song, private val scope: CoroutineScope) {
         }
     }
 
-    private class Rendered(val arrangement: Arrangement, val take: VocalTake, val loop: FloatArray, val beat: FloatArray)
+    private class Rendered(val arrangement: Arrangement, val take: VocalTake, val loop: Array<FloatArray>, val beat: FloatArray)
 
     /** The line and slot that sound at loop frame [frame]. */
     fun locate(frame: Long): Pair<Int, Int>? {

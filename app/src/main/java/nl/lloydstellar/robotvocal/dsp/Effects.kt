@@ -15,8 +15,10 @@ class FxContext(
     /** Song frame of sample 0 of the buffer (negative when the take starts before bar 1). */
     val origin: Long,
     val seed: Int,
-    /** Song frames of the last syllable of every line, for echo throws. */
+    /** Song frames of the last syllable of every line, for echo throws and tape stops. */
     val lineEnds: List<LongRange> = emptyList(),
+    /** Song frames of the first syllable of every line, for reverse swells. */
+    val lineStarts: List<LongRange> = emptyList(),
     private val pitch: (Long) -> Double,
 ) {
     fun pitchAt(sample: Int): Double = pitch(origin + sample)

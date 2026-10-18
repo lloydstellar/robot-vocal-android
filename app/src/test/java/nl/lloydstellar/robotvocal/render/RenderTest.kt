@@ -46,13 +46,13 @@ class RenderTest {
     @Test fun `the loop is a whole number of bars and every vowel sounds`() {
         val arrangement = Arranger.arrange(song, TestData.lyrics)
         val take = Renderer.render(song, arrangement, engine)
-        val loop = Renderer.loop(take)
+        val loop = Renderer.loop(take)[0]
         assertEquals(Ticks.loopFrames(arrangement.bars * 4, song.bpm, 48_000), loop.size.toLong())
         assertTrue(loop.all { it.isFinite() })
         for (v in take.phones.filter { it.vowel }) {
             val from = (v.start - take.origin).toInt()
             val to = (v.end - take.origin).toInt()
-            assertTrue("vowel ${v.ph} at ${v.start} is silent", rms(take.samples, from, to) > 0.02)
+            assertTrue("vowel ${v.ph} at ${v.start} is silent", rms(take.channels[0], from, to) > 0.02)
         }
     }
 
@@ -61,8 +61,8 @@ class RenderTest {
         val dir = File(TestData.root, "tools/audio").apply { mkdirs() }
         for (voice in engine.voices) {
             val s = song.copy(voice = voice.id)
-            val a = Renderer.loop(Renderer.render(s, arrangement, engine))
-            val b = Renderer.loop(Renderer.render(s, arrangement, engine))
+            val a = Renderer.loop(Renderer.render(s, arrangement, engine))[0]
+            val b = Renderer.loop(Renderer.render(s, arrangement, engine))[0]
             assertTrue("${voice.name} differs between two renders", a.contentEquals(b))
             assertTrue("${voice.name} clips", a.all { it in -1f..1f })
             File(dir, "tin-voice-${voice.id.substringAfter('/')}.wav").outputStream().use {

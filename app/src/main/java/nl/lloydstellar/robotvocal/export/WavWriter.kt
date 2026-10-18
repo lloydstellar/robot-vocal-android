@@ -9,7 +9,7 @@ import kotlin.math.roundToInt
 enum class WavFormat(val bits: Int, val float: Boolean) { PCM16(16, false), PCM24(24, false), FLOAT32(32, true) }
 
 /**
- * Writes mono WAV files: PCM 16 or 24 bit, or 32-bit float. A loop gets an
+ * Writes WAV files, mono or stereo: PCM 16 or 24 bit, or 32-bit float. A loop gets an
  * `acid` chunk with its tempo and number of beats (REAPER and others read it;
  * the rest skip it), and every file a LIST INFO chunk with its title and the
  * name of the app.
@@ -18,9 +18,15 @@ object WavWriter {
 
     class Meta(val title: String, val bpm: Double? = null, val beats: Int? = null, val loop: Boolean = false)
 
-    fun write(samples: FloatArray, sampleRate: Int, format: WavFormat, meta: Meta, out: OutputStream) {
+    fun write(samples: FloatArray, sampleRate: Int, format: WavFormat, meta: Meta, out: OutputStream) =
+        write(arrayOf(samples), sampleRate, format, meta, out)
+
+    /** [channels] of equal length, written interleaved. */
+    fun write(channels: Array<FloatArray>, sampleRate: Int, format: WavFormat, meta: Meta, out: OutputStream) {
         val bytesPerSample = format.bits / 8
-        val dataSize = samples.size * bytesPerSample
+        val count = channels.size
+        val frames = channels[0].size
+        val dataSize = frames * count * bytesPerSample
         val info = infoChunk(meta.title)
         val acid = if (meta.bpm != null && meta.beats != null) acidChunk(meta.bpm, meta.beats, meta.loop) else ByteArray(0)
         val fmtSize = 16
@@ -29,8 +35,8 @@ object WavWriter {
         val head = ByteBuffer.allocate(12 + 8 + fmtSize).order(ByteOrder.LITTLE_ENDIAN)
         head.put("RIFF".toByteArray()).putInt(riffSize).put("WAVE".toByteArray())
         head.put("fmt ".toByteArray()).putInt(fmtSize)
-        head.putShort((if (format.float) 3 else 1).toShort()).putShort(1)
-        head.putInt(sampleRate).putInt(sampleRate * bytesPerSample).putShort(bytesPerSample.toShort()).putShort(format.bits.toShort())
+        head.putShort((if (format.float) 3 else 1).toShort()).putShort(count.toShort())
+        head.putInt(sampleRate).putInt(sampleRate * count * bytesPerSample).putShort((count * bytesPerSample).toShort()).putShort(format.bits.toShort())
         out.write(head.array())
         out.write(acid)
         out.write(info)
@@ -38,8 +44,8 @@ object WavWriter {
         val dataHead = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN).put("data".toByteArray()).putInt(dataSize)
         out.write(dataHead.array())
         val chunk = ByteBuffer.allocate(4096 * bytesPerSample).order(ByteOrder.LITTLE_ENDIAN)
-        for (s in samples) {
-            val v = s.coerceIn(-1f, 1f)
+        for (i in 0 until frames * count) {
+            val v = channels[i % count][i / count].coerceIn(-1f, 1f)
             when (format) {
                 WavFormat.PCM16 -> chunk.putShort((v * 32767f).roundToInt().toShort())
                 WavFormat.PCM24 -> {
@@ -57,8 +63,8 @@ object WavWriter {
         if (dataSize % 2 == 1) out.write(0)
     }
 
-    fun bytes(samples: FloatArray, sampleRate: Int, format: WavFormat, meta: Meta): ByteArray =
-        ByteArrayOutputStream().also { write(samples, sampleRate, format, meta, it) }.toByteArray()
+    fun bytes(channels: Array<FloatArray>, sampleRate: Int, format: WavFormat, meta: Meta): ByteArray =
+        ByteArrayOutputStream().also { write(channels, sampleRate, format, meta, it) }.toByteArray()
 
     /** acid: flags, root note, two unknown fields, beats, meter 4/4, tempo. */
     private fun acidChunk(bpm: Double, beats: Int, loop: Boolean): ByteArray {

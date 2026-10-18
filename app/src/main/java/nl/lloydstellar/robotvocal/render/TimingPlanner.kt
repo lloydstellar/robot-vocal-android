@@ -21,6 +21,8 @@ data class TimedPhone(
     val word: Int = syllable,
     /** Part of the last syllable of its line: where an echo throw goes. */
     val lineEnd: Boolean = false,
+    /** Part of the first syllable of its line: where a reverse swell leads in. */
+    val lineStart: Boolean = false,
     val vowel: Boolean = ph.vowel,
 )
 
@@ -69,6 +71,7 @@ class TimingPlanner(private val sampleRate: Int = SAMPLE_RATE) {
         for ((k, p) in placement.placed.withIndex()) {
             val syllable = syllables[p.syllable]
             val last = k == placement.placed.lastIndex
+            val first = k == 0
             val beat = beats[k]
             val speakEnd = beat + ((ends[k] - beat) * settings.gate).roundToLong()
             val nextStart = if (k + 1 < beats.size) beats[k + 1] - ms(15.0) else Long.MAX_VALUE
@@ -85,7 +88,7 @@ class TimingPlanner(private val sampleRate: Int = SAMPLE_RATE) {
             val vowelStart = beat + lead
             var t = vowelStart - onset.sum()
             for ((i, phone) in syllable.onset.withIndex()) {
-                out += TimedPhone(phone.ph, t, t + onset[i], stressed, pitchOf(p.syllable), syllableBase + p.syllable, wordBase + syllable.word, last)
+                out += TimedPhone(phone.ph, t, t + onset[i], stressed, pitchOf(p.syllable), syllableBase + p.syllable, wordBase + syllable.word, last, first)
                 t += onset[i]
             }
 
@@ -97,10 +100,10 @@ class TimingPlanner(private val sampleRate: Int = SAMPLE_RATE) {
                 coda = compress(syllable.coda.map { it.ph }, coda, max(0L, limit - vowelStart - minVowel))
             }
             val vowelEnd = max(vowelStart + ms(20.0), limit - coda.sum())
-            out += TimedPhone(syllable.vowel.ph, vowelStart, vowelEnd, stressed, pitchOf(p.syllable), syllableBase + p.syllable, wordBase + syllable.word, last)
+            out += TimedPhone(syllable.vowel.ph, vowelStart, vowelEnd, stressed, pitchOf(p.syllable), syllableBase + p.syllable, wordBase + syllable.word, last, first)
             t = vowelEnd
             for ((i, phone) in syllable.coda.withIndex()) {
-                out += TimedPhone(phone.ph, t, t + coda[i], stressed, pitchOf(p.syllable), syllableBase + p.syllable, wordBase + syllable.word, last)
+                out += TimedPhone(phone.ph, t, t + coda[i], stressed, pitchOf(p.syllable), syllableBase + p.syllable, wordBase + syllable.word, last, first)
                 t += coda[i]
             }
             previousEnd = t

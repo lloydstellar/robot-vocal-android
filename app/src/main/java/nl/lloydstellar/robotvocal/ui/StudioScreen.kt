@@ -242,7 +242,8 @@ private fun StepsPage(model: StudioModel, playing: Pair<Int, Int>?) {
     val slots = placement.slotsPerBar
     val syllables = arranged.lyric.syllables
     val byStart = placement.placed.associateBy { it.slot }
-    val locked = model.song.lines.getOrNull(model.line)?.locks?.isNotEmpty() == true
+    val songLine = model.song.lines.getOrNull(model.line)
+    val locked = songLine?.locks?.isNotEmpty() == true
     val gate = model.song.gate ?: arranged.preset.gate
     /* a step shows a hold bar when the syllable before it still sounds for most of the step */
     fun held(slot: Int) = byStart[slot] == null && placement.placed.any { slot > it.slot && it.length * gate - (slot - it.slot) >= 0.75 }
@@ -265,6 +266,7 @@ private fun StepsPage(model: StudioModel, playing: Pair<Int, Int>?) {
                 StepKey(
                     step = slots + slot,
                     syllable = p?.let { syllables[it.syllable].text },
+                    badge = p?.let { badge(songLine, it.syllable) },
                     hold = false,
                     lamp = playing?.let { it.first == model.line && it.second == slot } == true,
                     selected = slot == model.selectedSlot,
@@ -291,6 +293,7 @@ private fun StepsPage(model: StudioModel, playing: Pair<Int, Int>?) {
                     StepKey(
                         step = if (slots == 12) (row * perRow + i) * 4 / 3 else row * perRow + i,
                         syllable = p?.let { syllables[it.syllable].text },
+                        badge = p?.let { badge(songLine, it.syllable) },
                         hold = held(slot),
                         lamp = playing?.let { it.first == model.line && it.second == slot } == true,
                         selected = slot == model.selectedSlot,
@@ -324,6 +327,23 @@ private fun StepsPage(model: StudioModel, playing: Pair<Int, Int>?) {
             Text("${chosen.length} ${if (chosen.length == 1) "STEP" else "STEPS"}", style = legend(11.sp, C.LegendDim))
             if (s.guessed) Text("SPELLING GUESSED", style = legend(11.sp, C.Amber))
         }
+        Spacer(Modifier.height(12.dp))
+        val offset = songLine?.notes?.get(chosen.syllable) ?: 0
+        val base = model.song.note ?: App.voices.info(model.song.voice)?.note ?: 48
+        val repeats = songLine?.stutters?.get(chosen.syllable)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.width(76.dp)) {
+                Text("NOTE", style = legend(10.sp, C.LegendDim, spacing = 1.2.sp))
+                Text(noteName(base + offset) + if (offset != 0) "  " + (if (offset > 0) "+$offset" else "$offset") else "",
+                    style = legend(15.sp, C.Legend, FontWeight.Bold, 0.5.sp))
+            }
+            Key("-1", Modifier.weight(1f), height = 40.dp) { model.shiftNote(-1) }
+            Key("+1", Modifier.weight(1f), height = 40.dp) { model.shiftNote(1) }
+            Key("BASE", Modifier.weight(1f), height = 40.dp, textSize = 12.5.sp, enabled = offset != 0) { model.shiftNote(0) }
+        }
+        Spacer(Modifier.height(8.dp))
+        Key(if (repeats == null) "STUTTER" else "STUTTER x$repeats", Modifier.fillMaxWidth(), height = 40.dp, textSize = 12.5.sp,
+            lamp = repeats != null) { model.cycleStutter() }
     }
     Spacer(Modifier.height(12.dp))
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -402,6 +422,12 @@ private fun PresetList(title: String, presets: List<RobotPreset>, selected: Stri
     Spacer(Modifier.height(6.dp))
 }
 
+private fun badge(line: nl.lloydstellar.robotvocal.score.SongLine?, syllable: Int): String? {
+    val note = line?.notes?.get(syllable)?.let { if (it > 0) "+$it" else "$it" }
+    val stutter = line?.stutters?.get(syllable)?.let { "x$it" }
+    return listOfNotNull(note, stutter).joinToString(" ").ifEmpty { null }
+}
+
 private val NOTE_NAMES = listOf("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
 
 /** MIDI note 48 is C3. */
@@ -428,7 +454,7 @@ private fun OutPage(model: StudioModel) {
     Key("DRY STEM TOO", Modifier.fillMaxWidth(), height = 40.dp, textSize = 12.5.sp, lamp = withDry,
         enabled = model.hasEffects) { withDry = !withDry }
     Spacer(Modifier.height(8.dp))
-    Text("48 kHz, mono, exactly ${take?.bars ?: 0} ${if (take?.bars == 1) "bar" else "bars"} at ${bpmText(model.song.bpm)} BPM. " +
+    Text("48 kHz, ${if (take?.stereo == true) "stereo" else "mono"}, exactly ${take?.bars ?: 0} ${if (take?.bars == 1) "bar" else "bars"} at ${bpmText(model.song.bpm)} BPM. " +
         "It loops without a gap; the example beat is not in the file.", style = body(13.sp, C.LegendDim))
     Spacer(Modifier.height(12.dp))
 

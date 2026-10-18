@@ -43,13 +43,20 @@ class LiveSender(private val context: Context) {
     /** Sends the vocal (and the dry voice when [withDry]) as one package. */
     suspend fun send(title: String, take: VocalTake, withDry: Boolean, onProgress: (Double) -> Unit): Delivery {
         val beats = take.bars * 4.0
-        val wet = withContext(Dispatchers.Default) { Wav.fromFloat(Renderer.loop(take), Renderer.RATE, 1) }
-        val dry = if (withDry) withContext(Dispatchers.Default) { Wav.fromFloat(Renderer.loop(take, dry = true), Renderer.RATE, 1) } else null
+        val wet = withContext(Dispatchers.Default) { wav(Renderer.loop(take)) }
+        val dry = if (withDry) withContext(Dispatchers.Default) { wav(Renderer.loop(take, dry = true)) } else null
         val name = soundName(title)
         return client.send(title = soundName(title, 60), bpm = take.bpm, onProgress = onProgress) {
             sound(name, wet, kind = Kind.LOOP, role = Role.VOCAL, lengthBeats = beats)
             if (dry != null) sound(soundName("$title dry"), dry, kind = Kind.LOOP, role = Role.VOCAL, lengthBeats = beats)
         }
+    }
+
+    /** A 32-bit float WAV in memory, mono or stereo. */
+    private fun wav(channels: Array<FloatArray>): ByteArray {
+        val n = channels[0].size
+        val interleaved = FloatArray(n * channels.size) { channels[it % channels.size][it / channels.size] }
+        return Wav.fromFloat(interleaved, Renderer.RATE, channels.size)
     }
 
     companion object {

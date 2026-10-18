@@ -290,6 +290,8 @@ fun StepKey(
     selected: Boolean,
     modifier: Modifier = Modifier,
     stressed: Boolean = false,
+    /** A small mark in the corner of the cap: a note change such as "+2", or a stutter "x4". */
+    badge: String? = null,
     onClick: () -> Unit,
 ) {
     val source = remember { MutableInteractionSource() }
@@ -326,6 +328,10 @@ fun StepKey(
                 },
             contentAlignment = Alignment.Center,
         ) {
+            if (badge != null) {
+                Text(badge, style = legend(9.sp, C.Ink, FontWeight.Bold, 0.sp),
+                    modifier = Modifier.align(Alignment.TopEnd).padding(top = 2.dp, end = 3.dp))
+            }
             if (syllable != null) {
                 BasicText(
                     syllable.uppercase(),

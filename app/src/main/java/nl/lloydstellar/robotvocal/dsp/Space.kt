@@ -20,7 +20,7 @@ class BeatDelay(
 ) : Effect {
     override fun process(x: FloatArray, ctx: FxContext): FloatArray {
         val d = ctx.beats(beats).coerceAtLeast(1)
-        val send = if (onlyLineEnds) lineEndMask(x.size, ctx) else null
+        val send = if (onlyLineEnds) rangeMask(x.size, ctx, ctx.lineEnds) else null
         val line = DoubleArray(x.size)
         val lp = exp(-2 * Math.PI * highCut / ctx.rate)
         val hp = exp(-2 * Math.PI * lowCut / ctx.rate)
@@ -44,11 +44,11 @@ class BeatDelay(
     }
 }
 
-/** 1 on the last syllable of every line, 0 elsewhere, with 5 ms edges. */
-internal fun lineEndMask(size: Int, ctx: FxContext): FloatArray {
+/** 1 inside the song frame [ranges], 0 elsewhere, with 5 ms edges. */
+internal fun rangeMask(size: Int, ctx: FxContext, ranges: List<LongRange>): FloatArray {
     val mask = FloatArray(size)
     val edge = (ctx.rate * 0.005).toInt().coerceAtLeast(1)
-    for (range in ctx.lineEnds) {
+    for (range in ranges) {
         val from = (range.first - ctx.origin).toInt().coerceIn(0, size)
         val to = (range.last - ctx.origin).toInt().coerceIn(0, size)
         for (i in from until to) {
@@ -71,11 +71,13 @@ class Plate(
     private val mix: Double = 0.2,
     private val preDelayMs: Double = 12.0,
     private val gateBeats: Double = 0.0,
+    /** Extra samples on every delay, 23 for the right side of a stereo pair as in Freeverb. */
+    private val spread: Int = 0,
 ) : Effect {
     override fun process(x: FloatArray, ctx: FxContext): FloatArray {
         val scale = ctx.rate / 44_100.0
-        val combs = COMBS.map { DampedComb((it * scale).toInt(), room * 0.28 + 0.7, damping * 0.4) }
-        val allpasses = ALLPASSES.map { AllPass((it * scale).toInt()) }
+        val combs = COMBS.map { DampedComb(((it + spread) * scale).toInt(), room * 0.28 + 0.7, damping * 0.4) }
+        val allpasses = ALLPASSES.map { AllPass(((it + spread) * scale).toInt()) }
         val pre = (preDelayMs * ctx.rate / 1000).toInt()
         val wet = FloatArray(x.size)
         for (i in x.indices) {
@@ -133,5 +135,23 @@ class Plate(
     companion object {
         private val COMBS = intArrayOf(1116, 1188, 1277, 1356, 1422, 1491, 1557, 1617)
         private val ALLPASSES = intArrayOf(556, 441, 341, 225)
+    }
+}
+
+/**
+ * A reverse swell: the reverb of the first word of every line, played
+ * backwards, so it grows into the line instead of trailing after it. Made
+ * the way studios did it with tape: turn it round, add reverb, turn it back.
+ */
+class ReverseSwell(private val room: Double = 0.9, private val mix: Double = 0.6) : Effect {
+    override fun process(x: FloatArray, ctx: FxContext): FloatArray {
+        val mask = rangeMask(x.size, ctx, ctx.lineStarts)
+        val reversed = FloatArray(x.size) { x[x.size - 1 - it] * mask[x.size - 1 - it] }
+        /* the context runs backwards in time here, which a plate does not care about */
+        val verb = Plate(room = room, damping = 0.3, mix = 1.0, preDelayMs = 0.0).process(reversed, ctx)
+        return FloatArray(x.size) { i ->
+            val j = x.size - 1 - i
+            (x[i] + (verb[j] - reversed[j]) * mix).toFloat()
+        }
     }
 }

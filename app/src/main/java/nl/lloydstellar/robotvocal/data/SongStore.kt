@@ -87,10 +87,15 @@ class SongStore(private val dir: File) {
                         l.flow?.let { put("flow", it) }
                         l.bars?.let { put("bars", it) }
                         if (l.locks.isNotEmpty()) put("locks", JSONObject().apply { l.locks.forEach { (k, v) -> put(k.toString(), v) } })
+                        if (l.notes.isNotEmpty()) put("notes", JSONObject().apply { l.notes.forEach { (k, v) -> put(k.toString(), v) } })
+                        if (l.stutters.isNotEmpty()) put("stutters", JSONObject().apply { l.stutters.forEach { (k, v) -> put(k.toString(), v) } })
                     })
                 }
             })
         }
+
+        private fun intMap(o: JSONObject?): Map<Int, Int> =
+            o?.keys()?.asSequence()?.associate { it.toInt() to o.getInt(it) }.orEmpty()
 
         fun fromJson(o: JSONObject): Song {
             val lines = o.optJSONArray("lines") ?: JSONArray()
@@ -100,12 +105,13 @@ class SongStore(private val dir: File) {
                 bpm = o.optDouble("bpm", 120.0).coerceIn(40.0, 240.0),
                 lines = (0 until lines.length()).map { i ->
                     val l = lines.getJSONObject(i)
-                    val locks = l.optJSONObject("locks")
                     SongLine(
                         text = l.optString("text"),
                         flow = l.optString("flow").ifEmpty { null },
                         bars = if (l.has("bars")) l.getInt("bars").coerceIn(1, 8) else null,
-                        locks = locks?.keys()?.asSequence()?.associate { it.toInt() to locks.getInt(it) }.orEmpty(),
+                        locks = intMap(l.optJSONObject("locks")),
+                        notes = intMap(l.optJSONObject("notes")),
+                        stutters = intMap(l.optJSONObject("stutters")),
                     )
                 },
                 flow = o.optString("flow", "robot8"),

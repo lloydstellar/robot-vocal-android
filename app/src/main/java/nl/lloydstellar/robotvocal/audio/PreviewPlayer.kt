@@ -24,7 +24,7 @@ class PreviewPlayer(context: Context) {
     private val audio = context.getSystemService(AudioManager::class.java)
     private val main = Handler(Looper.getMainLooper())
 
-    @Volatile private var vocal = FloatArray(0)
+    @Volatile private var vocal = arrayOf(FloatArray(0))
     @Volatile private var beat = FloatArray(0)
     @Volatile var beatLevel = 0.7f
     @Volatile var loop = true
@@ -42,22 +42,22 @@ class PreviewPlayer(context: Context) {
         .setOnAudioFocusChangeListener { if (it < 0) main.post { stop() } }
         .build()
 
-    /** Vocal and beat of the same length (a whole number of bars). */
-    fun setMaterial(vocal: FloatArray, beat: FloatArray) {
+    /** Vocal (one or two channels) and beat of the same length, a whole number of bars. */
+    fun setMaterial(vocal: Array<FloatArray>, beat: FloatArray) {
         this.vocal = vocal
         this.beat = beat
     }
 
     fun play(fromFrame: Long = 0) {
         stop()
-        if (vocal.isEmpty()) return
+        if (vocal[0].isEmpty()) return
         if (audio.requestAudioFocus(focus) != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) return
-        val min = AudioTrack.getMinBufferSize(RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_FLOAT)
+        val min = AudioTrack.getMinBufferSize(RATE, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_FLOAT)
         val t = AudioTrack.Builder()
             .setAudioAttributes(ATTRIBUTES)
             .setAudioFormat(AudioFormat.Builder().setSampleRate(RATE).setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
-                .setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
-            .setBufferSizeInBytes(maxOf(min * 2, BLOCK * 4 * 4))
+                .setChannelMask(AudioFormat.CHANNEL_OUT_STEREO).build())
+            .setBufferSizeInBytes(maxOf(min * 2, BLOCK * 2 * 4 * 4))
             .setTransferMode(AudioTrack.MODE_STREAM)
             .build()
         track = t
@@ -72,14 +72,16 @@ class PreviewPlayer(context: Context) {
     }
 
     private fun write(t: AudioTrack, gen: Int, from: Long) {
-        val block = FloatArray(BLOCK)
+        val block = FloatArray(BLOCK * 2)
         var pos = from
         while (gen == generation) {
             val v = vocal
             val b = beat
-            val length = maxOf(v.size, b.size)
+            val length = maxOf(v[0].size, b.size)
             if (length == 0) break
             val level = beatLevel
+            val left = v[0]
+            val right = v[v.size - 1]
             var n = 0
             while (n < BLOCK) {
                 if (pos >= length) {
@@ -87,11 +89,14 @@ class PreviewPlayer(context: Context) {
                     pos = 0
                 }
                 val i = pos.toInt()
-                block[n] = (if (i < v.size) v[i] else 0f) + (if (i < b.size) b[i] * level else 0f)
+                /* the beat sits in the middle; a stereo vocal keeps its sides */
+                val drums = if (i < b.size) b[i] * level else 0f
+                block[2 * n] = (if (i < left.size) left[i] else 0f) + drums
+                block[2 * n + 1] = (if (i < right.size) right[i] else 0f) + drums
                 n++
                 pos++
             }
-            if (n > 0 && t.write(block, 0, n, AudioTrack.WRITE_BLOCKING) < 0) break
+            if (n > 0 && t.write(block, 0, 2 * n, AudioTrack.WRITE_BLOCKING) < 0) break
             if (n < BLOCK) {
                 /* the end without looping: let the buffer play out, then stop */
                 Thread.sleep((t.bufferSizeInFrames * 1000L / RATE) + 50)
@@ -104,7 +109,7 @@ class PreviewPlayer(context: Context) {
     /** The loop position the listener hears now, in frames; null when stopped. */
     fun position(): Long? {
         val t = track ?: return null
-        val length = maxOf(vocal.size, beat.size)
+        val length = maxOf(vocal[0].size, beat.size)
         if (length == 0) return null
         return (startFrame + (t.playbackHeadPosition.toLong() and 0xFFFFFFFFL)) % length
     }

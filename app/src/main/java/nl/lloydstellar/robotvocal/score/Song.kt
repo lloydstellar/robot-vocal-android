@@ -9,6 +9,10 @@ data class SongLine(
     val flow: String? = null,
     val bars: Int? = null,
     val locks: Map<Int, Int> = emptyMap(),
+    /** Semitones above or below the song's note, per syllable: a melody. */
+    val notes: Map<Int, Int> = emptyMap(),
+    /** Syllables whose start repeats 2, 4 or 8 times: "ro-ro-ro-robot". */
+    val stutters: Map<Int, Int> = emptyMap(),
 )
 
 /** Everything that makes a song; the rendered sound is always made from this again. */

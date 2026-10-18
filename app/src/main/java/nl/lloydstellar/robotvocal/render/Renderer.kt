@@ -44,20 +44,23 @@ object Arranger {
 }
 
 /**
- * The rendered vocal. [samples] hold the song from frame [origin] on (origin
- * is negative when a pickup or a consonant starts before bar 1); the song
- * itself is exactly [loopFrames] long, a whole number of bars.
+ * The rendered vocal: one channel (mono) or two (stereo, when a stereo effect
+ * is on), from song frame [origin] on (negative when a pickup, a consonant or a
+ * reverse swell starts before bar 1). The song itself is exactly [loopFrames]
+ * long, a whole number of bars.
  */
 class VocalTake(
-    val samples: FloatArray,
-    /** The voice before the robot effect, the same length and origin: the dry stem. */
+    val channels: Array<FloatArray>,
+    /** The voice before every effect, mono, the same length and origin: the dry stem. */
     val dry: FloatArray,
     val origin: Long,
     val loopFrames: Long,
     val bpm: Double,
     val bars: Int,
     val phones: List<TimedPhone>,
-)
+) {
+    val stereo: Boolean get() = channels.size == 2
+}
 
 object Renderer {
     const val RATE = TimingPlanner.SAMPLE_RATE
@@ -69,9 +72,9 @@ object Renderer {
     fun render(song: Song, arrangement: Arrangement, engine: VoiceEngine, sampleRate: Int = TimingPlanner.SAMPLE_RATE): VocalTake {
         val planner = TimingPlanner(sampleRate)
         val note = song.note ?: engine.voices.firstOrNull { it.id == song.voice }?.note ?: 48
-        val hz = 440.0 * 2.0.pow((note - 69) / 12.0)
         var syllableBase = 0
         var wordBase = 0
+        val stutters = ArrayList<Pair<Int, Int>>() // syllable in the song, repeats
         val phones = arrangement.lines.flatMap { line ->
             val settings = TimingPlanner.Settings(
                 bpm = song.bpm,
@@ -80,7 +83,12 @@ object Renderer {
                 gate = song.gate ?: line.preset.gate,
                 feel = song.feel,
             )
-            planner.plan(line.lyric.syllables, line.placement, line.startTick, settings, syllableBase, wordBase) { hz }.also {
+            val songLine = song.lines.getOrNull(line.index)
+            val notes = songLine?.notes.orEmpty()
+            songLine?.stutters?.forEach { (syllable, repeats) -> stutters += (syllableBase + syllable) to repeats }
+            planner.plan(line.lyric.syllables, line.placement, line.startTick, settings, syllableBase, wordBase) { syllable ->
+                hz(note + (notes[syllable] ?: 0))
+            }.also {
                 syllableBase += line.lyric.syllables.size
                 wordBase += line.lyric.words.size
             }
@@ -88,24 +96,50 @@ object Renderer {
         val loopFrames = Ticks.loopFrames(arrangement.bars * 4, song.bpm, sampleRate)
         if (phones.isEmpty()) {
             val silence = FloatArray(loopFrames.toInt())
-            return VocalTake(silence, silence, 0, loopFrames, song.bpm, arrangement.bars, phones)
+            return VocalTake(arrayOf(silence), silence, 0, loopFrames, song.bpm, arrangement.bars, phones)
         }
         val timed = endBeforeTheLoopComesAround(phones, loopFrames, sampleRate)
         val rendered = engine.render(timed, song.voice, sampleRate, seed = song.id.hashCode())
-        /* room for what the effects let ring on, folded into the loop afterwards: seconds for echoes and plates */
+        /* room before the voice for reverse swells and after it for what rings on; both fold into the loop */
+        val lead = if (song.space != "none" || song.motion != "none") sampleRate else 0
         val ringOut = if (song.space != "none") sampleRate * 4 else sampleRate / 2
-        val dry = rendered.samples.copyOf(rendered.samples.size + ringOut)
-        val lineEnds = timed.filter { it.lineEnd }.groupBy { it.syllable }.values.map { it.first().start..it.last().end }
-        val ctx = FxContext(sampleRate, song.bpm, rendered.origin, song.id.hashCode(), lineEnds) { frame -> pitchAt(timed, frame) }
-        val chain = listOfNotNull(
-            RobotPresets.byId(song.effect).effect,
-            RobotPresets.motion(song.motion).effect,
-            RobotPresets.space(song.space).effect,
-        )
-        val wet = if (chain.isEmpty()) dry.copyOf() else chain.fold(dry) { buffer, fx -> fx.process(buffer, ctx) }
-        normalise(dry)
-        normalise(wet)
-        return VocalTake(wet, dry, rendered.origin, loopFrames, song.bpm, arrangement.bars, timed)
+        val dry = FloatArray(lead + rendered.samples.size + ringOut)
+        System.arraycopy(rendered.samples, 0, dry, lead, rendered.samples.size)
+        val origin = rendered.origin - lead
+        if (stutters.isNotEmpty()) stutter(dry, origin, timed, stutters, song.bpm, sampleRate)
+        fun ranges(pick: (TimedPhone) -> Boolean) = timed.filter(pick).groupBy { it.syllable }.values.map { it.first().start..it.last().end }
+        val ctx = FxContext(sampleRate, song.bpm, origin, song.id.hashCode(), ranges { it.lineEnd }, ranges { it.lineStart }) { frame ->
+            pitchAt(timed, frame)
+        }
+        var channels = arrayOf(dry.copyOf())
+        for (preset in listOf(RobotPresets.byId(song.effect), RobotPresets.motion(song.motion), RobotPresets.space(song.space))) {
+            channels = preset.apply(channels, ctx)
+        }
+        normalise(arrayOf(dry))
+        normalise(channels)
+        return VocalTake(channels, dry, origin, loopFrames, song.bpm, arrangement.bars, timed)
+    }
+
+    fun hz(midi: Int): Double = 440.0 * 2.0.pow((midi - 69) / 12.0)
+
+    /**
+     * Stutters: the start of a syllable repeated [repeats] times in 32nds (16ths
+     * for two), "ro-ro-ro-robot", after which the syllable goes on where the
+     * time has got to. Short fades keep the cuts from clicking.
+     */
+    private fun stutter(x: FloatArray, origin: Long, phones: List<TimedPhone>, stutters: List<Pair<Int, Int>>, bpm: Double, rate: Int) {
+        val fade = rate / 500
+        for ((syllable, repeats) in stutters) {
+            val first = phones.firstOrNull { it.syllable == syllable } ?: continue
+            val slice = ((if (repeats <= 2) 0.25 else 0.125) * 60.0 / bpm * rate).toInt()
+            val start = (first.start - origin).toInt()
+            if (start < 0 || start + slice * repeats >= x.size) continue
+            val source = x.copyOfRange(start, start + slice)
+            for (r in 0 until repeats) for (i in 0 until slice) {
+                val w = minOf(1f, i.toFloat() / fade, (slice - i).toFloat() / fade)
+                x[start + r * slice + i] = source[i] * w
+            }
+        }
     }
 
     /** The planned pitch at a song frame: the phone sounding there, else the one before. */
@@ -139,12 +173,13 @@ object Renderer {
         }
     }
 
-    private fun normalise(x: FloatArray) {
+    /** Scales all channels together so their highest peak is [PEAK]. */
+    private fun normalise(channels: Array<FloatArray>) {
         var peak = 0f
-        for (v in x) peak = maxOf(peak, abs(v))
+        for (x in channels) for (v in x) peak = maxOf(peak, abs(v))
         if (peak > 1e-6f) {
             val g = PEAK / peak
-            for (i in x.indices) x[i] *= g
+            for (x in channels) for (i in x.indices) x[i] *= g
         }
     }
 
@@ -154,13 +189,14 @@ object Renderer {
      * pickup, the consonants before the first beat) is added to the end. Looped,
      * every vowel stays on its beat.
      */
-    fun loop(take: VocalTake, dry: Boolean = false): FloatArray {
+    fun loop(take: VocalTake, dry: Boolean = false): Array<FloatArray> {
         val n = take.loopFrames.toInt()
-        val out = FloatArray(n)
-        val samples = if (dry) take.dry else take.samples
-        for (i in samples.indices) {
-            val frame = take.origin + i
-            out[Math.floorMod(frame, take.loopFrames).toInt()] += samples[i]
+        val sources = if (dry) arrayOf(take.dry) else take.channels
+        val out = Array(sources.size) { FloatArray(n) }
+        for ((c, samples) in sources.withIndex()) {
+            for (i in samples.indices) {
+                out[c][Math.floorMod(take.origin + i, take.loopFrames).toInt()] += samples[i]
+            }
         }
         normalise(out)
         return out

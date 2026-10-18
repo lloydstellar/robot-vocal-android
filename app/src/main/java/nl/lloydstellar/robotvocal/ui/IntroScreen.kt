@@ -59,7 +59,7 @@ private val TITLE_SYLLABLES = listOf(
 private const val STEP_MS = 125L // a 16th note at 120 BPM
 
 /** "Lloyd's Robot Vocal" by UNIT ONE, its syllables locked to the title steps, as one bar at 120 BPM. */
-private fun titleLoop(): FloatArray {
+private fun titleLoop(): Array<FloatArray> {
     val locks = TITLE_SYLLABLES.keys.sorted().withIndex().associate { (i, step) -> i to step }
     val song = Song("intro", "Intro", 120.0, listOf(SongLine("Lloyd's Robot Vocal", bars = 1, locks = locks)), voice = "formant/unit1")
     val arrangement = Arranger.arrange(song, App.lyrics)

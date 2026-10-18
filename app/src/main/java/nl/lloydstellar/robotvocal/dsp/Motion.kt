@@ -98,3 +98,29 @@ class BeatRepeat(private val everyBars: Int = 2, private val fillSixteenths: Int
         return out
     }
 }
+
+/**
+ * A tape stop on the last word of every line: the tape slows to a standstill
+ * over the word, so it drops in pitch and stretches, then the line is silent
+ * until the next one starts.
+ */
+class TapeStop : Effect {
+    override fun process(x: FloatArray, ctx: FxContext): FloatArray {
+        val out = x.copyOf()
+        val silence = (ctx.rate * 0.06).toInt()
+        for (range in ctx.lineEnds) {
+            val from = (range.first - ctx.origin).toInt()
+            val to = (range.last - ctx.origin).toInt()
+            if (from < 0 || to >= x.size || to - from < 2) continue
+            val d = (to - from).toDouble()
+            for (t in 0 until to - from) {
+                val pos = from + t - t * t / (2 * d) // speed falls from 1 to 0
+                val a = pos.toInt()
+                out[from + t] = (x[a] + (x[(a + 1).coerceAtMost(x.size - 1)] - x[a]) * (pos - a)).toFloat()
+            }
+            /* the tape has stopped: what rang on after the word is gone */
+            for (i in to until minOf(x.size, to + silence)) out[i] = 0f
+        }
+        return out
+    }
+}

@@ -8,8 +8,17 @@ import nl.lloydstellar.robotvocal.dsp.Carrier.SQUARE
 import nl.lloydstellar.robotvocal.dsp.Carrier.SUB
 import nl.lloydstellar.robotvocal.dsp.Carrier.SUPERSAW
 
-/** A named robot effect: a chain of effects, or none for the dry voice. */
-class RobotPreset(val id: String, val name: String, val description: String, val effect: Effect?)
+/** A named effect: a mono chain, a stereo effect, or nothing for the dry voice. */
+class RobotPreset(val id: String, val name: String, val description: String, val effect: Effect?, val stereo: StereoEffect? = null) {
+    /** Runs the effect on one or two channels; a stereo effect always gives two. */
+    fun apply(channels: Array<FloatArray>, ctx: FxContext): Array<FloatArray> = when {
+        stereo != null -> stereo.process(channels, ctx)
+        effect != null -> Array(channels.size) { effect.process(channels[it], ctx) }
+        else -> channels
+    }
+
+    val isStereo: Boolean get() = stereo != null
+}
 
 /**
  * The robot effects. The vocoders follow the song's notes, so every one of
@@ -63,6 +72,10 @@ object RobotPresets {
         RobotPreset("sweepfast", "FILTER WAH", "The filter sweep once a bar, narrower", FilterSweep(barsPerCycle = 1.0, low = 500.0, high = 4000.0, q = 5.0)),
         RobotPreset("repeat", "BEAT REPEAT", "The last beat of every two bars stutters in 16ths", BeatRepeat(everyBars = 2, fillSixteenths = 4)),
         RobotPreset("repeat8", "BEAT REPEAT 8", "A roll over the last half bar of every four bars", BeatRepeat(everyBars = 4, fillSixteenths = 8)),
+        RobotPreset("tapestop", "TAPE STOP", "The last word of every line slows to a standstill", TapeStop()),
+        RobotPreset("widechorus", "WIDE CHORUS", "Two drifting copies, one left and one right. Stereo", null, WideChorus()),
+        RobotPreset("autopan", "AUTO PAN", "The voice moves from side to side once a bar. Stereo", null, AutoPan(beatsPerCycle = 4.0)),
+        RobotPreset("autopan2", "AUTO PAN 1/2", "From side to side every two beats. Stereo", null, AutoPan(beatsPerCycle = 2.0)),
     )
 
     /** Room around the voice: delays on the beat and plates, whose tails fold into the loop. */
@@ -77,6 +90,10 @@ object RobotPresets {
         RobotPreset("bigplate", "BIG PLATE", "A long plate for held words", Plate(room = 0.86, damping = 0.35, mix = 0.22, preDelayMs = 25.0)),
         RobotPreset("gated", "GATED PLATE", "A big plate cut off an 8th after the voice, 1980s style", Plate(room = 0.88, damping = 0.3, mix = 0.35, gateBeats = 0.5)),
         RobotPreset("delayplate", "DELAY AND PLATE", "Dotted 8th echoes in a small plate", Chain(listOf(BeatDelay(beats = 0.75, feedback = 0.35, mix = 0.3), Plate(room = 0.55, mix = 0.14)))),
+        RobotPreset("reverse", "REVERSE SWELL", "Backwards reverb that grows into every line", ReverseSwell()),
+        RobotPreset("pingpong316", "PING-PONG 3/16", "Dotted 8th echoes from left to right. Stereo", null, PingPong(beats = 0.75)),
+        RobotPreset("pingpong18", "PING-PONG 1/8", "8th echoes bouncing between the sides. Stereo", null, PingPong(beats = 0.5, feedback = 0.4, mix = 0.4)),
+        RobotPreset("stereoplate", "STEREO PLATE", "A wide plate around the voice. Stereo", null, StereoPlate()),
     )
 
     fun motion(id: String): RobotPreset = MOTION.firstOrNull { it.id == id } ?: MOTION.first()

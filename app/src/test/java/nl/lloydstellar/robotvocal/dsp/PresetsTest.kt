@@ -28,9 +28,9 @@ class PresetsTest {
         for (preset in RobotPresets.ALL) {
             val s = song.copy(effect = preset.id)
             val started = System.nanoTime()
-            val loop = Renderer.loop(Renderer.render(s, arrangement, engine))
+            val loop = Renderer.loop(Renderer.render(s, arrangement, engine))[0]
             val ms = (System.nanoTime() - started) / 1_000_000
-            val again = Renderer.loop(Renderer.render(s, arrangement, engine))
+            val again = Renderer.loop(Renderer.render(s, arrangement, engine))[0]
             val rms = sqrt(loop.sumOf { it.toDouble() * it } / loop.size)
             report.append("${preset.name}: ${ms} ms, rms %.3f\n".format(rms))
             assertTrue("${preset.name} has NaN", loop.all { it.isFinite() })
