@@ -5,6 +5,14 @@ engines (01), rap flow (03), beat alignment (04), singing and rap synthesis (05)
 robot effects (06), Android (07), LA2L (08) and Google Play (09). Report 02 covers
 neural voices, which this app leaves out.
 
+## Status, 18 October 2026
+
+Steps 1 to 5, 7 and 9 are built and on GitHub; steps 6 and 8 are partly done.
+
+- Built: the front panel look, lyrics to syllables, eleven flows with the placement algorithm, sample-exact timing with the vowel on the beat, 26 voices (six formant characters, Flite kal, nineteen eSpeak NG voices), 21 robot effects plus movement and space effects (delays on the beat, echo throws, plates), example beats, WAV export, Send to Live with LA2L, About, Manual, icon, store graphics and a signed release build.
+- Changed on the way: the effects are written in Kotlin instead of C++ (offline rendering is fast enough, and every effect is tested on the JVM); the step grid has EARLIER, LATER, REFLOW and bars per line, but no notes per step or stutters per syllable yet.
+- Still open: the ClusterGen voices of Flite (slt, rms, awb need a patch for exact durations), the candidates of section 3.2, notes per step and a chord track.
+
 ## 1. What the app does
 
 You type lyrics, pick a tempo and a voice, and Robot Vocal raps them as a robot:
