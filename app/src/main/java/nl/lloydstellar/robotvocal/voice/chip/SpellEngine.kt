@@ -46,18 +46,21 @@ class SpellEngine(private val source: VoiceEngine, private val sourceVoice: Stri
      * starts exactly where the phoneme starts, so that sound comes on time.
      * The rests themselves are silent frames.
      *
-     * The toy said every word on its own, and so does this voice: before a
-     * word that follows another without a rest, a silence of [WORD_GAP_MS]
-     * comes off the end of the word before (at most 40 % of its last
-     * phoneme). The next word then starts on its step from silence, sharp, as
-     * the chip starts after a rest; in a dense line at 140 BPM the words no
-     * longer run into each other.
+     * Where two words would run into each other, the voice keeps them apart
+     * the way the toy said its words: a silence of [WORD_GAP_MS] comes off
+     * the end of the word before (at most 40 % of its last phoneme), and the
+     * next word starts on its step from silence, sharp, as the chip starts
+     * after a rest. Only after a word with a stressed syllable, since "the"
+     * and "to" belong to the word after them, and only where both sides of
+     * the border are voiced or both are not: where the voicing changes the
+     * chip already starts the new sound at once.
      */
     private fun spans(phones: List<TimedPhone>, origin: Long, rate: Int, length: Int): List<ChipEncoder.Span> {
         val longest = rate * FRAME_MS / 1000.0
         val narrow = rate * 0.020
         val wide = rate * 0.030
         val gap = rate * WORD_GAP_MS / 1000.0
+        val content = phones.filter { it.stressed }.map { it.word }.toSet()
         val keys = ArrayList<ChipEncoder.Span>()
         fun rest(at: Double, hz: Double) {
             keys += ChipEncoder.Span(at, at, at, narrow, false, hz, silent = true)
@@ -68,7 +71,7 @@ class SpellEngine(private val source: VoiceEngine, private val sourceVoice: Stri
             val start = max((p.start - origin).toDouble(), cursor)
             var end = (p.end - origin).toDouble()
             val next = phones.getOrNull(j + 1)
-            if (next != null && next.word != p.word) {
+            if (next != null && next.word != p.word && p.word in content && next.ph.voiced == p.ph.voiced) {
                 val silence = (next.start - p.end).toDouble()
                 if (silence < gap) end -= min(gap - silence, (end - start) * 0.4)
             }
@@ -98,6 +101,6 @@ class SpellEngine(private val source: VoiceEngine, private val sourceVoice: Stri
     private companion object {
         const val FRAME_MS = 25
         const val ANALYSIS_HZ = 100.0
-        const val WORD_GAP_MS = 15
+        const val WORD_GAP_MS = 10
     }
 }

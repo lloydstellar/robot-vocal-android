@@ -72,21 +72,41 @@ class SpellEngineTest {
         assertTrue("10 to 20 ms into the rest at ${Analysis.db(after / body)} dB", after < body * 0.01)
     }
 
-    @Test fun `every word is said on its own, the next one starting on its step`() {
-        /* "go now" without a rest: two words, the second starting where the first ends */
+    /** Words of [phones] (phoneme, word, stressed) one after another without a rest: vowels 200 ms, consonants 50 ms. */
+    private fun words(vararg phones: Triple<Ph, Int, Boolean>): Pair<Rendered, List<TimedPhone>> {
         var t = 0L
-        val phones = listOf(Ph.G to 0, Ph.OW to 0, Ph.N to 1, Ph.AW to 1).map { (ph, word) ->
+        val timed = phones.map { (ph, word, stressed) ->
             val length = if (ph.vowel) rate / 5L else rate / 20L
-            TimedPhone(ph, t, t + length, stressed = true, pitchHz = 110.0, syllable = word, word = word, lineStart = word == 0)
+            TimedPhone(ph, t, t + length, stressed, pitchHz = 110.0, syllable = word, word = word, lineStart = word == 0)
                 .also { t += length }
         }
-        val out = engine.render(phones, "chip/speller", rate, seed = 1)
+        return engine.render(timed, "chip/speller", rate, seed = 1) to timed
+    }
+
+    /** How loud the last 4 ms before phoneme [i] are, against the vowel [vowel]. */
+    private fun Rendered.before(phones: List<TimedPhone>, i: Int, vowel: Int): Double {
+        val start = (phones[i].start - origin).toInt()
+        return rms(samples, start - rate * 3 / 1000, rate * 4 / 1000) / rms(samples, middle(phones[vowel]))
+    }
+
+    @Test fun `two words that would run together get a short silence between them`() {
+        /* "go now": a stressed word, voiced into voiced */
+        val (out, phones) = words(Triple(Ph.G, 0, true), Triple(Ph.OW, 0, true), Triple(Ph.N, 1, true), Triple(Ph.AW, 1, true))
+        assertTrue("the end of \"go\" at ${Analysis.db(out.before(phones, 2, 1))} dB", out.before(phones, 2, 1) < 0.03)
         val start = (phones[2].start - out.origin).toInt()
-        val vowel = rms(out.samples, out.middle(phones[1]))
-        val before = rms(out.samples, start - rate * 4 / 1000, rate * 6 / 1000)
-        val after = rms(out.samples, start + rate * 5 / 1000, rate * 6 / 1000)
-        assertTrue("the end of the first word at ${Analysis.db(before / vowel)} dB", before < vowel * 0.03)
-        assertTrue("the start of the second word at ${Analysis.db(after / vowel)} dB", after > vowel * 0.1)
+        val after = rms(out.samples, start + rate * 5 / 1000, rate * 6 / 1000) / rms(out.samples, out.middle(phones[1]))
+        assertTrue("the start of \"now\" at ${Analysis.db(after)} dB", after > 0.1)
+    }
+
+    @Test fun `no silence after a function word, nor where the voicing changes`() {
+        /* "the voice on": "the" leans on "voice"; between "voice" and "on" the s already ends where the vowel starts */
+        val (out, phones) = words(
+            Triple(Ph.DH, 0, false), Triple(Ph.AH, 0, false),
+            Triple(Ph.V, 1, true), Triple(Ph.OY, 1, true), Triple(Ph.S, 1, true),
+            Triple(Ph.AA, 2, false), Triple(Ph.N, 2, false),
+        )
+        assertTrue("the end of \"the\" at ${Analysis.db(out.before(phones, 2, 3))} dB", out.before(phones, 2, 3) > 0.1)
+        assertTrue("the end of \"voice\" at ${Analysis.db(out.before(phones, 5, 3))} dB", out.before(phones, 5, 3) > 0.03)
     }
 
     @Test fun `every hiss comes out as noise, quieter than a vowel`() {
