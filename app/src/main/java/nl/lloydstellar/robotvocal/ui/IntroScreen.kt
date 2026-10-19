@@ -39,6 +39,7 @@ import kotlinx.coroutines.withContext
 import nl.lloydstellar.robotvocal.App
 import nl.lloydstellar.robotvocal.render.Arranger
 import nl.lloydstellar.robotvocal.render.Renderer
+import nl.lloydstellar.robotvocal.render.VocalTake
 import nl.lloydstellar.robotvocal.score.Song
 import nl.lloydstellar.robotvocal.score.SongLine
 
@@ -59,11 +60,10 @@ private val TITLE_SYLLABLES = listOf(
 private const val STEP_MS = 125L // a 16th note at 120 BPM
 
 /** "Lloyd's Robot Vocal" by UNIT ONE, its syllables locked to the title steps, as one bar at 120 BPM. */
-private fun titleLoop(): Array<FloatArray> {
+private fun title(): VocalTake {
     val locks = TITLE_SYLLABLES.keys.sorted().withIndex().associate { (i, step) -> i to step }
     val song = Song("intro", "Intro", 120.0, listOf(SongLine("Lloyd's Robot Vocal", bars = 1, locks = locks)), voice = "formant/unit1")
-    val arrangement = Arranger.arrange(song, App.lyrics)
-    return Renderer.loop(Renderer.render(song, arrangement, App.voices))
+    return Renderer.render(song, Arranger.arrange(song, App.lyrics), App.voices)
 }
 
 /**
@@ -80,22 +80,28 @@ fun IntroScreen(onDone: () -> Unit) {
 
     LaunchedEffect(Unit) {
         delay(450)
-        /* the robot says the title in time with the steps; without sound the steps run on their own */
-        val loop = if (!App.spokenIntro) null else runCatching { withContext(Dispatchers.Default) { titleLoop() } }.getOrNull()
+        /* the robot says the title once, in time with the steps; the l of "Lloyd's" runs up before step 0. Without sound the steps run on their own */
+        val title = if (!App.spokenIntro) null else runCatching { withContext(Dispatchers.Default) { title() } }.getOrNull()
+        val origin = title?.origin?.coerceAtMost(0L) ?: 0L
         val stepFrames = Renderer.RATE * STEP_MS / 1000
-        if (loop != null) {
+        if (title != null) {
+            val (loop, once) = Renderer.preview(title)
             player.loop = false
-            player.setMaterial(loop, FloatArray(0))
+            player.setMaterial(loop, FloatArray(0), once, title.origin)
             player.play()
         }
         val start = System.nanoTime()
         while (true) {
-            val frame = player.position() ?: ((System.nanoTime() - start) / 1_000_000 * Renderer.RATE / 1000)
-            val s = (frame / stepFrames).toInt()
-            if (s >= 16 || (loop != null && !player.playing && frame > 0)) break
-            if (s != step) {
-                step = s
-                TITLE_SYLLABLES[s]?.let { typed = TITLE.substring(0, it.shownChars) }
+            /* the song frame: where the player is, or else the time since the start */
+            val elapsed = (System.nanoTime() - start) / 1_000_000 * Renderer.RATE / 1000
+            val frame = player.position() ?: (origin + elapsed)
+            val s = Math.floorDiv(frame, stepFrames).toInt()
+            /* the steps run to the end of the bar, the voice to the end of its last sound */
+            if (s >= 16 && (title == null || !player.playing)) break
+            val lit = if (s in 0 until 16) s else -1
+            if (lit != step) {
+                step = lit
+                TITLE_SYLLABLES[lit]?.let { typed = TITLE.substring(0, it.shownChars) }
             }
             withFrameNanos { }
         }

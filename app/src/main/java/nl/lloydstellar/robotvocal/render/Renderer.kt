@@ -115,8 +115,8 @@ object Renderer {
         for (preset in listOf(RobotPresets.byId(song.effect), RobotPresets.motion(song.motion), RobotPresets.space(song.space))) {
             channels = preset.apply(channels, ctx)
         }
-        normalise(arrayOf(dry))
-        normalise(channels)
+        normalise(dry)
+        normalise(*channels)
         return VocalTake(channels, dry, origin, loopFrames, song.bpm, arrangement.bars, timed)
     }
 
@@ -173,8 +173,8 @@ object Renderer {
         }
     }
 
-    /** Scales all channels together so their highest peak is [PEAK]. */
-    private fun normalise(channels: Array<FloatArray>) {
+    /** Scales all [channels] together so their highest peak is [PEAK]. */
+    private fun normalise(vararg channels: FloatArray) {
         var peak = 0f
         for (x in channels) for (v in x) peak = maxOf(peak, abs(v))
         if (peak > 1e-6f) {
@@ -190,15 +190,33 @@ object Renderer {
      * every vowel stays on its beat.
      */
     fun loop(take: VocalTake, dry: Boolean = false): Array<FloatArray> {
-        val n = take.loopFrames.toInt()
-        val sources = if (dry) arrayOf(take.dry) else take.channels
-        val out = Array(sources.size) { FloatArray(n) }
+        val out = fold(take, if (dry) arrayOf(take.dry) else take.channels)
+        normalise(*out)
+        return out
+    }
+
+    /**
+     * The take for the preview: as a loop, and as it sounds played once, from
+     * its first sample at song frame [VocalTake.origin], with what starts
+     * before bar 1 in front and what rings past the end after it (at least as
+     * long as the song). Both with one gain, so the level does not jump when
+     * looping is switched.
+     */
+    fun preview(take: VocalTake): Pair<Array<FloatArray>, Array<FloatArray>> {
+        val loop = fold(take, take.channels)
+        val n = maxOf(take.channels[0].size.toLong(), take.loopFrames - take.origin).toInt()
+        val once = Array(take.channels.size) { take.channels[it].copyOf(n) }
+        normalise(*loop, *once)
+        return loop to once
+    }
+
+    private fun fold(take: VocalTake, sources: Array<FloatArray>): Array<FloatArray> {
+        val out = Array(sources.size) { FloatArray(take.loopFrames.toInt()) }
         for ((c, samples) in sources.withIndex()) {
             for (i in samples.indices) {
                 out[c][Math.floorMod(take.origin + i, take.loopFrames).toInt()] += samples[i]
             }
         }
-        normalise(out)
         return out
     }
 }

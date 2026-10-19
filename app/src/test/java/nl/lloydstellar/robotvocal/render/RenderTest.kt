@@ -29,6 +29,25 @@ class RenderTest {
         ),
     )
 
+    @Test fun `played once, a take starts with its pickup and ends in silence`() {
+        /*
+         * The intro: the l of "Lloyd's" runs up before step 0. The loop folds it onto its end, so the loop played
+         * once stopped in the middle of that l, with a hard click; played once the take keeps it in front.
+         */
+        val intro = Song("intro", "Intro", 120.0, listOf(SongLine("Lloyd's Robot Vocal", bars = 1,
+            locks = mapOf(0 to 0, 1 to 2, 2 to 4, 3 to 8, 4 to 10))), voice = "formant/unit1")
+        val take = Renderer.render(intro, Arranger.arrange(intro, TestData.lyrics), engine)
+        val (loop, once) = Renderer.preview(take)
+        fun rms(x: FloatArray, from: Int, n: Int) = sqrt((from until from + n).sumOf { (x[it] * x[it]).toDouble() } / n)
+        val fiveMs = 240
+        assertTrue("the l starts before step 0", take.origin < 0)
+        assertTrue("the loop ends in the l", rms(loop[0], loop[0].size - fiveMs, fiveMs) > 0.05)
+        assertTrue("played once it ends in silence", rms(once[0], once[0].size - fiveMs, fiveMs) < 0.001)
+        assertTrue("and starts with the l", rms(once[0], 0, (-take.origin).toInt()) > 0.01)
+        val peak = (loop + once).maxOf { x -> x.maxOf { kotlin.math.abs(it) } }
+        assertEquals("one gain for both", Renderer.PEAK, peak, 1e-4f)
+    }
+
     @Test fun `every vowel starts exactly on its step`() {
         val arrangement = Arranger.arrange(song, TestData.lyrics)
         val take = Renderer.render(song, arrangement, engine)

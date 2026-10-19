@@ -180,22 +180,22 @@ class StudioModel(initial: Song, private val scope: CoroutineScope) {
             val result = withContext(Dispatchers.Default) {
                 val arranged = Arranger.arrange(s, App.lyrics)
                 val take = Renderer.render(s, arranged, App.voices)
-                val loop = Renderer.loop(take)
+                val (loop, once) = Renderer.preview(take)
                 val swing = s.swing ?: FlowPreset.byId(s.flow).swing
                 val beat = BeatRenderer.render(BeatPattern.byId(s.beat), arranged.bars, s.bpm, swing, Renderer.RATE)
-                Rendered(arranged, take, loop, beat)
+                Rendered(arranged, take, loop, once, beat)
             }
             arrangement = result.arrangement
             take = result.take
             loopAudio = result.loop
             App.player.beatLevel = if (beatOn) s.beatLevel.toFloat() else 0f
-            App.player.setMaterial(result.loop, result.beat)
+            App.player.setMaterial(result.loop, result.beat, result.once, result.take.origin)
             line = line.coerceIn(0, (result.arrangement.lines.size - 1).coerceAtLeast(0))
             rendering = false
         }
     }
 
-    private class Rendered(val arrangement: Arrangement, val take: VocalTake, val loop: Array<FloatArray>, val beat: FloatArray)
+    private class Rendered(val arrangement: Arrangement, val take: VocalTake, val loop: Array<FloatArray>, val once: Array<FloatArray>, val beat: FloatArray)
 
     /** The line and slot that sound at loop frame [frame]. */
     fun locate(frame: Long): Pair<Int, Int>? {
