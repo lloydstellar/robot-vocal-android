@@ -73,11 +73,11 @@ class SpellEngineTest {
     }
 
     /** Words of [phones] (phoneme, word, stressed) one after another without a rest: vowels 200 ms, consonants 50 ms. */
-    private fun words(vararg phones: Triple<Ph, Int, Boolean>): Pair<Rendered, List<TimedPhone>> {
+    private fun words(vararg phones: Triple<Ph, Int, Boolean>, hz: Double = 110.0): Pair<Rendered, List<TimedPhone>> {
         var t = 0L
         val timed = phones.map { (ph, word, stressed) ->
             val length = if (ph.vowel) rate / 5L else rate / 20L
-            TimedPhone(ph, t, t + length, stressed, pitchHz = 110.0, syllable = word, word = word, lineStart = word == 0)
+            TimedPhone(ph, t, t + length, stressed, pitchHz = hz, syllable = word, word = word, lineStart = word == 0)
                 .also { t += length }
         }
         return engine.render(timed, "chip/speller", rate, seed = 1) to timed
@@ -89,13 +89,48 @@ class SpellEngineTest {
         return rms(samples, start - rate * 3 / 1000, rate * 4 / 1000) / rms(samples, middle(phones[vowel]))
     }
 
-    @Test fun `two words that would run together get a short silence between them`() {
-        /* "go now": a stressed word, voiced into voiced */
+    @Test fun `two words that would run together get a short, clean silence between them`() {
+        /* "go now": a stressed word, voiced into voiced. What rang on fades in 3 ms; moving the filter instead made a whoop */
         val (out, phones) = words(Triple(Ph.G, 0, true), Triple(Ph.OW, 0, true), Triple(Ph.N, 1, true), Triple(Ph.AW, 1, true))
-        assertTrue("the end of \"go\" at ${Analysis.db(out.before(phones, 2, 1))} dB", out.before(phones, 2, 1) < 0.03)
+        assertTrue("the end of \"go\" at ${Analysis.db(out.before(phones, 2, 1))} dB", out.before(phones, 2, 1) < 0.001)
         val start = (phones[2].start - out.origin).toInt()
         val after = rms(out.samples, start + rate * 5 / 1000, rate * 6 / 1000) / rms(out.samples, out.middle(phones[1]))
         assertTrue("the start of \"now\" at ${Analysis.db(after)} dB", after > 0.1)
+    }
+
+    @Test fun `a pause between words rings out on the word's own sound, without a whoop`() {
+        /*
+         * "seen them", "feel bass", "call me" at three notes. The chip used to load the pause's own (meaningless)
+         * coefficients while the word still rang: the ring jumped to 1 to 2 kHz and slid away, a whoop. Counted as
+         * zero crossings in the first 2 ms of the pause, that was 32 over these nine; a ring on the word's own low
+         * resonances crosses zero a few times at most.
+         */
+        val pairs = listOf(listOf(Ph.S, Ph.IY, Ph.N) to listOf(Ph.DH, Ph.EH, Ph.M), listOf(Ph.F, Ph.IY, Ph.L) to listOf(Ph.B, Ph.AA, Ph.S),
+            listOf(Ph.K, Ph.AA, Ph.L) to listOf(Ph.M, Ph.IY))
+        var crossings = 0
+        for ((first, second) in pairs) for (hz in listOf(98.0, 110.0, 147.0)) {
+            var t = 0L
+            val phones = (first.map { it to 0 } + second.map { it to 1 }).map { (ph, word) ->
+                val length = if (ph.vowel) rate / 8L else rate / 25L
+                TimedPhone(ph, t, t + length, stressed = true, pitchHz = hz, syllable = word, word = word, lineStart = word == 0)
+                    .also { t += length }
+            }
+            val x = engine.render(phones, "chip/speller", rate, seed = 1).let { out ->
+                val last = phones[first.size - 1]
+                val pause = (last.end - out.origin - minOf(rate / 100L, (last.end - last.start) * 4 / 10)).toInt()
+                out.samples.copyOfRange(pause, pause + rate / 500)
+            }
+            for (i in 1 until x.size) if ((x[i] >= 0) != (x[i - 1] >= 0) && maxOf(abs(x[i]), abs(x[i - 1])) > 1e-4) crossings++
+        }
+        assertTrue("$crossings zero crossings", crossings <= 12)
+    }
+
+    @Test fun `after a silence the first pulse comes at once, even on a low note`() {
+        /* at 55 Hz a period is 18 ms: a pulse counter left running could start the word that much late */
+        val (out, phones) = words(Triple(Ph.G, 0, true), Triple(Ph.OW, 0, true), Triple(Ph.N, 1, true), Triple(Ph.AW, 1, true), hz = 55.0)
+        val start = (phones[2].start - out.origin).toInt()
+        val first = rms(out.samples, start + rate * 2 / 1000, rate * 3 / 1000) / rms(out.samples, out.middle(phones[3]))
+        assertTrue("the first 3.5 ms of \"now\" at ${Analysis.db(first)} dB", first > 0.1)
     }
 
     @Test fun `no silence after a function word, nor where the voicing changes`() {

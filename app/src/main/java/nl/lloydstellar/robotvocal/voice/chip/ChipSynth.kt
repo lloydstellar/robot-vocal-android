@@ -38,26 +38,39 @@ class ChipSynth(private val tables: ChipTables, seed: Int) {
      * Speaks [frames] into [length] samples at [rate]. Frame j sounds from its
      * own values towards those of frame j + 1, in the chip's eight steps,
      * unless the chip would hold them: when the voicing changes, or after
-     * silence. Then frame j + 1 starts at once with its own values. Before
-     * silence the sound holds too, where the chip would fade it over a whole
-     * frame, so the end of a word stays as long as it was planned; and in the
-     * silence the filter lets go within about 5 ms instead of ringing on.
+     * silence. Then frame j + 1 starts at once with its own values, and a
+     * voiced one with a new pulse, as the chip zeroes its pitch counter there.
+     *
+     * Before silence the sound holds too, where the chip would fade it over a
+     * whole frame, so the end of a word stays as long as it was planned. In
+     * the silence the filter keeps its shape while what still rings in it
+     * fades out over [FADE] samples (3 ms); then it is cleared, so the next
+     * word starts from nothing. Letting the filter itself go instead moved its
+     * resonances while they rang, a short whoop between words.
      */
     fun render(frames: List<ChipFrame>, length: Int, rate: Int): FloatArray {
         val out = FloatArray(length)
         var t = frames.firstOrNull()?.start ?: return out
+        var gain = 0
         for ((j, f) in frames.withIndex()) {
             val next = frames.getOrNull(j + 1)
-            load(f, 0)
+            val previous = frames.getOrNull(j - 1)
             val silent = tables.energy[f.energy] == 0
+            val fresh = previous == null || tables.energy[previous.energy] == 0 || previous.voiced != f.voiced
+            if (silent) {
+                energy = 0
+            } else {
+                load(f, 0)
+                if (fresh && gain < FADE) clear()
+                gain = FADE
+                if (fresh) pitchCount = Int.MAX_VALUE
+            }
             val hold = next == null || next.voiced != f.voiced || tables.energy[next.energy] == 0 || (silent && tables.energy[next.energy] > 0)
             var step = 0
             if (!f.voiced) clock = ChipTables.RATE.toDouble()
             while (t < f.end) {
                 val ip = ((t - f.start) / (f.end - f.start) * 8).toInt().coerceIn(0, 7)
-                while (!hold && step < ip) load(next!!, INTERPOLATION[++step])
-                /* in a rest the filter lets go within a few milliseconds, so the chip's sharpest resonances do not ring on */
-                if (silent) for (i in 0 until 10) k[i] -= k[i] shr 3
+                while (!hold && !silent && step < ip) load(next!!, INTERPOLATION[++step])
                 if (f.voiced && pitchCount >= period) {
                     /* a new period, on a clock that fits this note in whole samples */
                     pitchCount = 0
@@ -65,14 +78,27 @@ class ChipSynth(private val tables: ChipTables, seed: Int) {
                     clock = period * f.hz
                 }
                 val excitation = if (f.voiced) tables.chirp[minOf(pitchCount, tables.chirp.size - 1)] else noise()
-                pitchCount++
-                val sample = output(lattice(excitation)) / 128.0
+                if (pitchCount < Int.MAX_VALUE) pitchCount++
+                var value = lattice(excitation)
+                if (silent && gain > 0) {
+                    gain--
+                    if (gain == 0) clear()
+                }
+                if (gain < FADE) value = value * gain / FADE
+                val sample = output(value) / 128.0
                 val length = rate / clock
                 spread(out, t, length, sample)
                 t += length
             }
         }
         return out
+    }
+
+    /** Empties the lattice, as after a long silence. */
+    private fun clear() {
+        x.fill(0)
+        u.fill(0)
+        previousEnergy = 0
     }
 
     /**
@@ -130,5 +156,8 @@ class ChipSynth(private val tables: ChipTables, seed: Int) {
     private companion object {
         /** The shift of each interpolation step of a frame: step 0 is the frame's own value. */
         val INTERPOLATION = intArrayOf(0, 3, 3, 3, 2, 2, 1, 1)
+
+        /** The fade of what rings on into a rest, in chip samples: 3 ms. */
+        const val FADE = 24
     }
 }
