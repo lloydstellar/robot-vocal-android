@@ -6,7 +6,9 @@ Get cmudict.dict and LICENSE from https://github.com/cmusphinx/cmudict and run:
     python3 tools/make_lexicon.py path/to/cmudict.dict
 
 Of the variants of a word the one with the fewest syllables is kept ("every"
-as EV-RY, "fire" as one syllable), the way words are said in rap.
+as EV-RY, "fire" as one syllable), the way words are said in rap. A few words
+mean something else in music than the variant the dictionary lists first;
+there the music wins: "bass" sounds like "base", not like the fish.
 
 Format, all integers big-endian:
     "RVLX", version (u8) = 1, count (u32)
@@ -23,6 +25,13 @@ PHONES = ["AA", "AE", "AH", "AO", "AW", "AY", "B", "CH", "D", "DH", "EH", "ER", 
           "IH", "IY", "JH", "K", "L", "M", "N", "NG", "OW", "OY", "P", "R", "S", "SH", "T", "TH",
           "UH", "UW", "V", "W", "Y", "Z", "ZH"]
 INDEX = {p: i for i, p in enumerate(PHONES)}
+
+# The variant to keep where the music meaning is not the first one listed.
+MUSIC = {
+    "bass": "B EY1 S",
+    "basses": "B EY1 S IH0 Z",
+    "lead": "L IY1 D",
+}
 
 
 def encode(pron):
@@ -49,9 +58,14 @@ def main():
                 continue
             head, *pron = line.split()
             word = head.split("(")[0].lower()
+            if word in MUSIC and " ".join(pron) != MUSIC[word]:
+                continue
             syllables = sum(1 for t in pron if t[-1].isdigit())
             if word not in best or syllables < best[word][0]:
                 best[word] = (syllables, pron)
+    missing = [w for w in MUSIC if w not in best]
+    if missing:
+        sys.exit(f"Not in the dictionary as listed in MUSIC: {missing}")
     words = sorted(best, key=lambda w: w.encode("ascii", "replace"))
     word_blob, phone_blob = bytearray(), bytearray()
     word_offsets, phone_offsets = [0], [0]

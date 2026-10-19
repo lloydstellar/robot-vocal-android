@@ -27,6 +27,15 @@ class TextTest {
         assertEquals(1, Syllabifier.split(lexicon.lookup("fire")!!).size)
     }
 
+    @Test fun `bass is said as in a bassline, and the text stays as typed`() {
+        assertEquals("B EY1 S", lexicon.lookup("bass")!!.arpabet())
+        assertEquals("L IY1 D", lexicon.lookup("lead")!!.arpabet())
+        assertEquals("B EY1 S L AY2 N", LetterToSound(lexicon).pronounce("bassline").arpabet())
+        val bass = lyrics.line("Drop the BASS").syllables.last()
+        assertEquals("BASS", bass.text)
+        assertEquals(Ph.EY, bass.vowel.ph)
+    }
+
     @Test fun `numbers are said the way lyrics say them`() {
         assertEquals("eight oh eight", spoken("808"))
         assertEquals("nineteen eighty four", spoken("1984"))
