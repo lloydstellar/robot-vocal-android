@@ -10,6 +10,7 @@
     <style name="Theme.RobotVocal.Splash" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/panel</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/icon_red</item>
         <item name="postSplashScreenTheme">@style/Theme.RobotVocal</item>
     </style>
 </resources>

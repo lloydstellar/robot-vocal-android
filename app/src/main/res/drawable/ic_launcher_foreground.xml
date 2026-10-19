@@ -1,15 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Two lamps and eight band levels. Made by tools/make_icon.py. -->
+<!-- A robot in profile singing a beam of sound. Made by tools/make_icon.py. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
-    <path android:fillColor="#FFB000" android:pathData="M35.30,44.00a5.2,5.2 0 1,0 10.4,0a5.2,5.2 0 1,0 -10.4,0z" />
-    <path android:fillColor="#FFB000" android:pathData="M62.30,44.00a5.2,5.2 0 1,0 10.4,0a5.2,5.2 0 1,0 -10.4,0z" />
-    <path android:fillColor="#C9482D" android:pathData="M27.80,70.00h4.8v9h-4.8z" />
-    <path android:fillColor="#C9482D" android:pathData="M34.60,64.00h4.8v15h-4.8z" />
-    <path android:fillColor="#DC7E2B" android:pathData="M41.40,58.00h4.8v21h-4.8z" />
-    <path android:fillColor="#DC7E2B" android:pathData="M48.20,63.00h4.8v16h-4.8z" />
-    <path android:fillColor="#DCB53A" android:pathData="M55.00,57.00h4.8v22h-4.8z" />
-    <path android:fillColor="#DCB53A" android:pathData="M61.80,62.00h4.8v17h-4.8z" />
-    <path android:fillColor="#DCD4C1" android:pathData="M68.60,67.00h4.8v12h-4.8z" />
-    <path android:fillColor="#DCD4C1" android:pathData="M75.40,71.00h4.8v8h-4.8z" />
+    <group android:pivotX="52" android:pivotY="54" android:rotation="-10"
+        android:scaleX="0.8" android:scaleY="0.8" android:translateX="-4" android:translateY="0.5">
+        <path android:fillColor="#DCD4C1" android:pathData="M77.5,62L112,43L112,85Z" />
+        <path android:fillColor="#1B1B19" android:pathData="M41,25H66Q70,25 70,29V37H52.25A3.75,3.75 0 0,0 52.25,44.5H70V56H31V35ZM36,54H71Q74,54 74,57V57.5H60.1A1.1,1.1 0 0,0 60.1,59.7H74V61H60.1A1.1,1.1 0 0,0 60.1,63.2H74V64.5H60.1A1.1,1.1 0 0,0 60.1,66.7H74V67L69,73H40Q36,73 36,69ZM38.1,36A1.1,1.1 0 0,0 37,37.1V47.9A1.1,1.1 0 0,0 38.1,49H38.1A1.1,1.1 0 0,0 39.2,47.9V37.1A1.1,1.1 0 0,0 38.1,36ZM42.1,36A1.1,1.1 0 0,0 41,37.1V47.9A1.1,1.1 0 0,0 42.1,49H42.1A1.1,1.1 0 0,0 43.2,47.9V37.1A1.1,1.1 0 0,0 42.1,36ZM46.1,36A1.1,1.1 0 0,0 45,37.1V47.9A1.1,1.1 0 0,0 46.1,49H46.1A1.1,1.1 0 0,0 47.2,47.9V37.1A1.1,1.1 0 0,0 46.1,36ZM45.3,63A2.3,2.3 0 1,0 40.7,63A2.3,2.3 0 1,0 45.3,63ZM46,74H58A1,1 0 0,1 59,75V76.4A1,1 0 0,1 58,77.4H46A1,1 0 0,1 45,76.4V75A1,1 0 0,1 46,74ZM47.5,78.4H56.5A1,1 0 0,1 57.5,79.4V80.8A1,1 0 0,1 56.5,81.8H47.5A1,1 0 0,1 46.5,80.8V79.4A1,1 0 0,1 47.5,78.4Z" />
+        <path android:fillColor="#FFB000" android:pathData="M70,37H52.25A3.75,3.75 0 0,0 52.25,44.5H70Z" />
+    </group>
 </vector>

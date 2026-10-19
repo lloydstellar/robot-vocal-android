@@ -2,4 +2,5 @@
     <color name="panel">#FF131312</color>
     <color name="legend">#FFEAE4D4</color>
     <color name="amber">#FFFFB000</color>
+    <color name="icon_red">#FFC9482D</color>
 </resources>
