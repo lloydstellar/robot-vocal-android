@@ -9,7 +9,7 @@ neural voices, which this app leaves out.
 
 Steps 1 to 5, 7 and 9 are built and on GitHub; steps 6 and 8 are partly done.
 
-- Built: the front panel look, lyrics to syllables, eleven flows with the placement algorithm, sample-exact timing with the vowel on the beat, 44 voices (six formant characters, eighteen retro voices ported from whackintalk, Flite kal, nineteen eSpeak NG voices), 21 robot effects plus movement and space effects (delays on the beat, echo throws, plates, ping-pong, a wide chorus, auto-pan, tape stops, reverse swells), a note and a stutter per syllable, example beats, WAV export in mono or stereo, Send to Live with LA2L, About, Manual, icon, store graphics and a signed release build.
+- Built: the front panel look, lyrics to syllables, eleven flows with the placement algorithm, sample-exact timing with the vowel on the beat, 49 voices (five formant characters, five home computer voices, eighteen retro voices ported from whackintalk, Flite kal, SPELLER on an emulated TMS5100, nineteen eSpeak NG voices), 21 robot effects plus movement and space effects (delays on the beat, echo throws, plates, ping-pong, a wide chorus, auto-pan, tape stops, reverse swells), a note and a stutter per syllable, example beats, WAV export in mono or stereo, Send to Live with LA2L, About, Manual, icon, store graphics and a signed release build.
 - Changed on the way: the effects are written in Kotlin instead of C++ (offline rendering is fast enough, and every effect is tested on the JVM). The retro voices keep whackintalk's synthesizer, phoneme table and voice settings, under names of our own; tempo and pitch come from the song, so its speaking rates and intonation are left out.
 - Still open: the ClusterGen voices of Flite (slt, rms, awb need a patch for exact durations), the other candidates of section 3.2 and a chord track.
 
@@ -48,11 +48,12 @@ ships named combinations, and the user can combine any voice with any effect.
 | Flite, voices kal and kal16 | The classic 1990s diphone robot, 8 and 16 kHz | Exact: our own durations and pitch go in through `duration_model_func` and `f0_model_func` (tested in report 01) | BSD-style, voices free for commercial use |
 | Flite, CMU ARCTIC voices slt, rms, awb, bdl, clb, jmk, ksp | Seven buzzy statistical voices, male and female, some accented | Exact, same hooks | BSD-style |
 | eSpeak NG, a curated set of its 104 variants (robosoft 1 to 8, klatt 1 to 6, whisper, croak and others) | Sharp formant voices, very robotic, very clear | The engine reports phoneme onsets but takes no durations, so each word is rendered and then placed and stretched (section 6.4) | GPL-3.0-or-later |
-| Our own formant synth | A Klatt synthesizer with our own phoneme tables, in several characters: clean unit, 8-bit chip, coarse 1970s allophone steps, sung monotone in the spirit of Kraftwerk's Robovox | Exact: we compute every frame | Ours (GPL); based on klatt-syn (MIT) and the Holmes tables of rsynth (GPL) |
+| Our own formant synth | A Klatt synthesizer with our own phoneme tables, in several characters: clean unit, coarse 1970s allophone steps, sung monotone in the spirit of Kraftwerk's Robovox | Exact: we compute every frame | Ours (GPL); based on klatt-syn (MIT) and the Holmes tables of rsynth (GPL) |
+| Home computer voices (our own) | Five voices made the way the software speech of 1982 was made: three oscillators at the formants (two sines and a square), restarted on every pulse, 4-bit levels and output, 1-bit hiss. Mouth and throat knobs as on those programs | Exact: the retro engine's track with our start and end per phoneme; the step clock is set per note, so periods are whole steps and notes stay in tune | Ours. The method follows the public description of S.A.M. (report 10); its tables come from the retro engine, not from S.A.M. |
 | whackintalk, ported to Kotlin | Eighteen voices after the talking computers of the mid-1980s: one Klatt synthesizer with the KLGLOTT88 source, from a flat machine to a whisper, seven of them singing a tune | Exact: every phoneme becomes elements with our start and end, with a new frame every millisecond | MIT |
-| LPC chip voice | The sound of the Speak & Spell: any voice above re-encoded into 10-pole LPC frames at 8 kHz with chirp excitation and 4 to 5 bit coefficients, played through a TMS5220-style lattice | Exact, 25 ms frames with pitch per frame | MAME tables (BSD-3), our own encoder. No Texas Instruments word data |
+| Speech chip voice (SPELLER) | The sound of the 1978 Speak & Spell: Flite's kal encoded into frames for the TMS5100 (TMC0281) and spoken by a port of MAME's emulation of it, with the chip's tables, integer lattice, chirp, interpolation rules and 8-bit output | Exact: a frame starts at every phoneme and lasts at most 25 ms; the chip's clock is set per note so notes are in tune (report 11) | MAME (BSD-3), our own encoder, kal (BSD-style). No Texas Instruments word data |
 
-That gives around 40 distinct base voices before effects.
+That gives 49 base voices before effects.
 
 ### 3.2 Candidates for later versions
 
@@ -65,7 +66,7 @@ That gives around 40 distinct base voices before effects.
 
 | Left out | Reason |
 |---|---|
-| S.A.M. (sam-js and C ports) | No licence; SoftVoice, Inc. still sells it. Our formant synth gets a clean-room "8-bit chip" character instead |
+| S.A.M. (sam-js, the C port and every "SAM mode" in other software) | No licence, and SoftVoice, Inc. never released it; the "SAM" modes of other synths carry its tables. The home computer voices follow its publicly described method with tables of our own (report 10) |
 | DECtalk | Proprietary licence |
 | Original chip ROM data (Votrax, SP0256, TI word lists) | Copyrighted data |
 | SVOX Pico | Output length differs per run on 64-bit; DMCA notice on parts of the code |
@@ -275,7 +276,7 @@ From report 09:
 - The AI-generated content policy does not apply: no generative models. The user-generated content policy does not apply: nothing is shared between users.
 - Privacy policy page on lloydstellar.nl, written for this app (it goes online for LA2L, unlike the other apps).
 - Assets: icon 512 x 512, feature graphic 1024 x 500, at least four 1080 x 1920 screenshots with the real interface filling most of the frame, and a 20 to 30 second video, because a listing cannot play sound otherwise.
-- App icon: three drafts to choose from, all built from real parts and drawn with a script in `tools/`: a speaker grille face with a lit band meter for a mouth, a single 14-segment display character, and ten vocoder bands forming a face.
+- App icon: an electro robot head in profile, tilted back, singing a beam of sound out of the frame: flat shapes on the red of the first step key, drawn by `tools/make_icon.py`. It replaced a first icon (two lamps over band levels) that looked like a voice assistant.
 - The store package as for Spin Doctor: `tools/store/listing.md`, `privacy.html`, `LEESMIJ.txt` with the Play Console steps, graphics, screenshots, signed AAB.
 
 ## 19. Steps
@@ -289,7 +290,7 @@ Each step ends with a commit, a build on the Pixel 8 and something Lloyd can hea
 5. **Robot effects.** The C++ effect engine, the twenty presets, pitch modes, chord track.
 6. **Step grid editing.** Move, stretch, rest, lock, stutter, accent, notes per step, feel and gate.
 7. **Ableton Live.** LA2L pairing and sending, tested with the test receiver and in Live.
-8. **More voices.** LPC chip voice, then candidates from 3.2 after their licence check.
+8. **More voices.** Home computer voices and the speech chip voice (done), then candidates from 3.2 after their licence check.
 9. **Release.** Icon drafts, manual, about and licences, store graphics and screenshots, privacy policy, signed AAB, 16 KB check, internal test track.
 
 ## 20. Risks and open points

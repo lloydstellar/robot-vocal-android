@@ -25,7 +25,7 @@ SCREENS = [
     ("01-steps.png", "Every syllable on a step of the beat"),
     ("02-words.png", "Type your lyrics, pick a flow"),
     ("04-effect.png", "Vocoders, talkboxes and delays on the beat"),
-    ("03-voice.png", "44 robot voices, from talking computers to 8-bit chips"),
+    ("03-voice.png", "49 robot voices, from 8-bit computers to speech chips"),
     ("05-out.png", "Save a WAV that loops, or send it to Ableton Live"),
     ("07-songs.png", "Your songs stay on your phone"),
     ("06-intro.png", "Free, without an account or ads"),

@@ -30,8 +30,9 @@ private val TOPICS = listOf(
         "The vowel of every syllable starts exactly on its step; the consonants before it start a little earlier, so the word " +
         "sounds on the beat. Tap a step to see its syllable, then move it EARLIER or LATER: the rest of the line stays where it is. " +
         "REFLOW lets the flow place the line again. The number of bars sets how much room a line gets."),
-    Topic("VOICE", "44 voices from four speech engines: our own formant voices, the retro voices of whackintalk (talking " +
-        "computers of the mid-1980s; some of them sing a tune over your notes), the kal voice of Flite and the voices of eSpeak NG. " +
+    Topic("VOICE", "49 voices from six speech engines: our own formant voices, home computer voices that speak the way the " +
+        "software of 1982 did, the retro voices of whackintalk (talking computers of the mid-1980s; some of them sing a tune over " +
+        "your notes), the kal voice of Flite, SPELLER on the speech chip of a 1978 talking toy, and the voices of eSpeak NG. " +
         "The pitch sets the note the voice speaks on, and the note the vocoders and talkboxes sing."),
     Topic("EFFECT", "Twenty robot effects: vocoders after the hardware of the late 1970s, talkboxes, a speech chip at 8 kHz, ring " +
         "modulation, combs, phasers, gates in 16ths. Effects that move, move in bars, so they stay in time."),

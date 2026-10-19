@@ -44,7 +44,7 @@ Beat-grid method: for engines with duration input (2 to 10) compute each phoneme
 - **hts_engine** with ARCTIC slt: time-stamped labels with phoneme alignment put word boundaries exactly at 0.25, 0.75, 1.25, 1.75 and 2.25 s; writing 110 Hz into the lf0 stream gave 109.3/110.1/110.6 Hz. 48 kHz, 5 ms frames.
 - **rsynth**: a `.pho` asking for 1300 ms rendered 1.297 s; `+E` traces element durations (`W.79 U.299 N.119 ...`); `+M` holds F0 fixed. 11025 Hz default, 22050 Hz with `-r`. Built with `-fcommon -std=gnu89` and relaxed GCC 16 errors.
 - **Gnuspeech SA**: built with one g++ command (no CMake); 44100 Hz; `-p` writes 16 parameters every 4 ms (pitch, glottal and fricative values, eight tube radii, velum); `gnuspeech_sa_trm` re-rendered a file with a flattened pitch column.
-- **S.A.M. C port** (studied, not shippable): 8-bit 22050 Hz; `-debug` prints per-phoneme lengths in frames; a frame is `speed` × 3.24 samples, about 10.6 ms at the default speed 72.
+- **S.A.M. C port** (not shippable, no licence): 8-bit output at 22050 Hz; `-debug` prints per-phoneme lengths in frames. Report 10 has what may be used from its public description.
 - **narrator-ts**: free voice, 22030 Hz 8-bit; `mode: 1` held about 108 to 116 Hz where mode 0 fell from 116 to 75 Hz.
 - **SVOX Pico** ([naggety/picotts](https://github.com/naggety/picotts)): four runs of the same sentence gave 0.464, 1.648, 0.476 and 2.504 s on x86-64. Unusable as built.
 
