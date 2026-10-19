@@ -1,16 +1,29 @@
 package nl.lloydstellar.robotvocal.voice
 
+import nl.lloydstellar.robotvocal.TestData
+import nl.lloydstellar.robotvocal.dsp.Resampler
+import nl.lloydstellar.robotvocal.render.Arranger
+import nl.lloydstellar.robotvocal.render.Renderer
 import nl.lloydstellar.robotvocal.render.TimedPhone
+import nl.lloydstellar.robotvocal.score.Song
+import nl.lloydstellar.robotvocal.score.SongLine
 import nl.lloydstellar.robotvocal.text.Ph
 import nl.lloydstellar.robotvocal.voice.Analysis.formants
 import nl.lloydstellar.robotvocal.voice.Analysis.pitch
 import nl.lloydstellar.robotvocal.voice.Analysis.rms
+import nl.lloydstellar.robotvocal.voice.chip.ChipEncoder
+import nl.lloydstellar.robotvocal.voice.chip.ChipTables
 import nl.lloydstellar.robotvocal.voice.chip.SpellEngine
 import nl.lloydstellar.robotvocal.voice.retro.RetroEngine
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.hypot
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 /**
  * Measures the speech chip voice. In the app it speaks Flite's kal, which
@@ -142,6 +155,70 @@ class SpellEngineTest {
         )
         assertTrue("the end of \"the\" at ${Analysis.db(out.before(phones, 2, 3))} dB", out.before(phones, 2, 3) > 0.1)
         assertTrue("the end of \"voice\" at ${Analysis.db(out.before(phones, 5, 3))} dB", out.before(phones, 5, 3) > 0.03)
+    }
+
+    @Test fun `a voiced stop is a voiced closure and then a burst of noise`() {
+        /* a voiced burst made the chirp ring through its bright spectrum: a whoop at the start of "dial" */
+        val ms = rate / 1000
+        val phones = listOf(
+            TimedPhone(Ph.D, 0L, 60L * ms, stressed = true, pitchHz = 110.0, syllable = 0),
+            TimedPhone(Ph.AY, 60L * ms, 260L * ms, stressed = true, pitchHz = 110.0, syllable = 0),
+        )
+        val spans = engine.spans(phones, 0, rate, 400 * ms)
+        for (s in spans.filter { !it.silent && it.end <= 60.0 * ms }) {
+            val burst = s.start >= 40.0 * ms
+            assertEquals("${s.start / ms} to ${s.end / ms} ms", !burst, s.voiced)
+        }
+        assertTrue(spans.any { !it.silent && it.start >= 40.0 * ms && it.end <= 60.0 * ms })
+    }
+
+    @Test fun `no frame gets a resonance narrow enough to whistle`() {
+        /*
+         * TIN VOICE at 134 BPM, spoken by the retro engine's MONOTONE and encoded for the chip: without the widening
+         * eight frames had a resonance above 1.5 kHz narrower than 70 Hz, which rings on between the pulses.
+         */
+        val source = RetroEngine()
+        val chip = SpellEngine(source, "retro/monotone")
+        val song = Song(id = "tin-voice", title = "Tin Voice", bpm = 134.0, voice = "chip/speller", lines = listOf(
+            SongLine("I am the voice of the machine"), SongLine("Every word right on the beat"),
+            SongLine("Turn the dial, push the key"), SongLine("Robot vocal, talk to me")))
+        val phones = Renderer.render(song, Arranger.arrange(song, TestData.lyrics), chip).phones
+        val speech = source.render(phones.map { it.copy(pitchHz = 100.0) }, "retro/monotone", rate, 1)
+        val low = Resampler.convert(speech.samples, rate, ChipTables.RATE)
+        val frames = ChipEncoder.encode(low, ChipTables.RATE.toDouble() / rate, chip.spans(phones, speech.origin, rate, speech.samples.size), ChipTables.TMS5100)
+        val whistles = frames.filter { it.energy > 0 }.flatMap { f ->
+            val k = DoubleArray(10) { j -> if (!f.voiced && j >= 4) 0.0 else ChipTables.TMS5100.k[j][f.k[j]] / 512.0 }
+            peaks(k).filter { (hz, width) -> hz > 1500 && width < 70 }
+        }
+        assertTrue("narrow resonances: $whistles", whistles.isEmpty())
+    }
+
+    /** The peaks of the chip's filter for reflection coefficients [k]: frequency and -3 dB width, in Hz. */
+    private fun peaks(k: DoubleArray): List<Pair<Double, Double>> {
+        var a = doubleArrayOf(1.0)
+        for (kj in k) {
+            val n = DoubleArray(a.size + 1)
+            for (i in a.indices) n[i] += a[i]
+            for (i in a.indices) n[a.size - i] += kj * a[i]
+            a = n
+        }
+        val m = DoubleArray(2000) { b ->
+            val w = PI * (b + 0.5) / 2000
+            var re = 0.0
+            var im = 0.0
+            for (i in a.indices) {
+                re += a[i] * cos(w * i)
+                im -= a[i] * sin(w * i)
+            }
+            1 / hypot(re, im)
+        }
+        return (1 until 1999).filter { m[it] > m[it - 1] && m[it] >= m[it + 1] }.map { b ->
+            var lo = b
+            while (lo > 0 && m[lo] > m[b] / sqrt(2.0)) lo--
+            var hi = b
+            while (hi < 1999 && m[hi] > m[b] / sqrt(2.0)) hi++
+            b * 2.0 to (hi - lo) * 2.0
+        }
     }
 
     @Test fun `every hiss comes out as noise, quieter than a vowel`() {

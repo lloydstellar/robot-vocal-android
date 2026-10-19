@@ -4,6 +4,10 @@ import nl.lloydstellar.robotvocal.dsp.Lpc
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.hypot
+import kotlin.math.atan2
+import kotlin.math.exp
 import kotlin.math.ln
 import kotlin.math.sqrt
 
@@ -72,14 +76,122 @@ object ChipEncoder {
             buf[i] = (v - PRE_EMPHASIS * x.getOrElse(at - 1) { 0f }) * (0.54 - 0.46 * cos(2 * PI * i / (n - 1)))
         }
         val rms = sqrt(sum / n)
-        if (chirp == null) return Analysis(Lpc.analyze(buf, 10).k, rms)
-        val power = power(buf)
-        val r = DoubleArray(11) { lag ->
-            var acc = 0.0
-            for (b in 0 until BINS) acc += power[b] / chirp[b] * CIRCLE[(b * lag) % (2 * BINS)]
-            acc
+        val r = if (chirp == null) {
+            DoubleArray(11) { lag ->
+                var acc = 0.0
+                for (i in 0 until n - lag) acc += buf[i] * buf[i + lag]
+                acc
+            }
+        } else {
+            val power = power(buf)
+            DoubleArray(11) { lag ->
+                var acc = 0.0
+                for (b in 0 until BINS) acc += power[b] / chirp[b] * CIRCLE[(b * lag) % (2 * BINS)]
+                acc
+            }
         }
-        return Analysis(Lpc.fromCorrelation(r, 10).k, rms)
+        return Analysis(widen(Lpc.fromCorrelation(r, 10).k), rms)
+    }
+
+    /**
+     * The filter of [k] (reflection coefficients 1..10) with every resonance
+     * at least as wide as in speech: [HIGH_BANDWIDTH] above [HIGH_FROM], and
+     * [LOW_BANDWIDTH] below. Speech analysed with the chirp divided out can
+     * get a third or fourth formant only 20 to 60 Hz wide, around 2.5 kHz
+     * where the chirp is weakest; through the chip such a resonance rings on
+     * between the pulses as a whistle. Measured on TIN VOICE at 134 BPM, this
+     * takes the peaks above 1.5 kHz narrower than 70 Hz from 58 to none, and
+     * the formants of the vowels stay where they were.
+     */
+    private fun widen(k: DoubleArray): DoubleArray {
+        /* reflection coefficients to the prediction polynomial, and its roots: the poles */
+        var a = doubleArrayOf(1.0)
+        for (i in 1..10) {
+            val n = DoubleArray(i + 1)
+            for (j in a.indices) n[j] += a[j]
+            for (j in a.indices) n[i - j] += k[i] * a[j]
+            a = n
+        }
+        val re = DoubleArray(10)
+        val im = DoubleArray(10)
+        roots(a, re, im)
+        val rate = ChipTables.RATE.toDouble()
+        var changed = false
+        for (i in 0 until 10) {
+            val radius = hypot(re[i], im[i])
+            val hz = abs(atan2(im[i], re[i])) * rate / (2 * PI)
+            val floor = exp(-PI * (if (hz > HIGH_FROM) HIGH_BANDWIDTH else LOW_BANDWIDTH) / rate)
+            if (radius > floor) {
+                re[i] *= floor / radius
+                im[i] *= floor / radius
+                changed = true
+            }
+        }
+        if (!changed) return k
+        /* back: the polynomial from its roots, then step down to reflection coefficients */
+        val pr = DoubleArray(11).also { it[0] = 1.0 }
+        val pi = DoubleArray(11)
+        for (i in 0 until 10) {
+            for (j in i + 1 downTo 1) {
+                val r0 = pr[j] - (re[i] * pr[j - 1] - im[i] * pi[j - 1])
+                val i0 = pi[j] - (re[i] * pi[j - 1] + im[i] * pr[j - 1])
+                pr[j] = r0
+                pi[j] = i0
+            }
+        }
+        val out = DoubleArray(11)
+        var c = pr.copyOf()
+        for (m in 10 downTo 1) {
+            val km = c[m].coerceIn(-0.999, 0.999)
+            out[m] = km
+            val next = DoubleArray(m)
+            next[0] = 1.0
+            for (j in 1 until m) next[j] = (c[j] - km * c[m - j]) / (1 - km * km)
+            c = next
+        }
+        return out
+    }
+
+    /** The roots of the monic polynomial [a] (a[0] = 1, degree 10), by the Durand-Kerner iteration. */
+    private fun roots(a: DoubleArray, re: DoubleArray, im: DoubleArray) {
+        val n = a.size - 1
+        for (i in 0 until n) {
+            /* start on a circle inside the unit circle, at angles that are not symmetric */
+            re[i] = 0.9 * cos(2 * PI * i / n + 0.4)
+            im[i] = 0.9 * sin(2 * PI * i / n + 0.4)
+        }
+        repeat(500) {
+            var moved = 0.0
+            for (i in 0 until n) {
+                /* p(z) by Horner */
+                var pr = 1.0
+                var pim = 0.0
+                for (j in 1..n) {
+                    val r0 = pr * re[i] - pim * im[i] + a[j]
+                    pim = pr * im[i] + pim * re[i]
+                    pr = r0
+                }
+                /* the product of (z - z_j) over the other roots */
+                var qr = 1.0
+                var qi = 0.0
+                for (j in 0 until n) {
+                    if (j == i) continue
+                    val dr = re[i] - re[j]
+                    val di = im[i] - im[j]
+                    val r0 = qr * dr - qi * di
+                    qi = qr * di + qi * dr
+                    qr = r0
+                }
+                val d = qr * qr + qi * qi
+                if (d < 1e-300) continue
+                val sr = (pr * qr + pim * qi) / d
+                val si = (pim * qr - pr * qi) / d
+                re[i] -= sr
+                im[i] -= si
+                moved = maxOf(moved, hypot(sr, si))
+            }
+            if (moved < 1e-12) return
+        }
     }
 
     /** |X|² of [x] at BINS frequencies from 0 to just below half the rate. */
@@ -155,6 +267,9 @@ object ChipEncoder {
     }
 
     private const val PRE_EMPHASIS = 0.7
+    private const val HIGH_FROM = 1800.0
+    private const val HIGH_BANDWIDTH = 100.0
+    private const val LOW_BANDWIDTH = 40.0
     private const val BINS = 256
     /** cos(pi m / BINS) for m from 0 to 2 BINS; the sine is the same a quarter turn later. */
     private val CIRCLE = DoubleArray(2 * BINS) { cos(PI * it / BINS) }
