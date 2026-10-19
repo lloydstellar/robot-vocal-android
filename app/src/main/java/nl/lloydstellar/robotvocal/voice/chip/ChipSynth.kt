@@ -38,7 +38,10 @@ class ChipSynth(private val tables: ChipTables, seed: Int) {
      * Speaks [frames] into [length] samples at [rate]. Frame j sounds from its
      * own values towards those of frame j + 1, in the chip's eight steps,
      * unless the chip would hold them: when the voicing changes, or after
-     * silence. Then frame j + 1 starts at once with its own values.
+     * silence. Then frame j + 1 starts at once with its own values. Before
+     * silence the sound holds too, where the chip would fade it over a whole
+     * frame, so the end of a word stays as long as it was planned; and in the
+     * silence the filter lets go within about 5 ms instead of ringing on.
      */
     fun render(frames: List<ChipFrame>, length: Int, rate: Int): FloatArray {
         val out = FloatArray(length)
@@ -46,12 +49,15 @@ class ChipSynth(private val tables: ChipTables, seed: Int) {
         for ((j, f) in frames.withIndex()) {
             val next = frames.getOrNull(j + 1)
             load(f, 0)
-            val hold = next == null || next.voiced != f.voiced || (f.energy == 0 && next.energy > 0)
+            val silent = tables.energy[f.energy] == 0
+            val hold = next == null || next.voiced != f.voiced || tables.energy[next.energy] == 0 || (silent && tables.energy[next.energy] > 0)
             var step = 0
             if (!f.voiced) clock = ChipTables.RATE.toDouble()
             while (t < f.end) {
                 val ip = ((t - f.start) / (f.end - f.start) * 8).toInt().coerceIn(0, 7)
                 while (!hold && step < ip) load(next!!, INTERPOLATION[++step])
+                /* in a rest the filter lets go within a few milliseconds, so the chip's sharpest resonances do not ring on */
+                if (silent) for (i in 0 until 10) k[i] -= k[i] shr 3
                 if (f.voiced && pitchCount >= period) {
                     /* a new period, on a clock that fits this note in whole samples */
                     pitchCount = 0

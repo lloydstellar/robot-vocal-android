@@ -60,6 +60,18 @@ class SpellEngineTest {
         assertTrue("before ${Analysis.db(before)} dB, after ${Analysis.db(after)} dB", before < after * 0.05)
     }
 
+    @Test fun `a word holds to its planned end, then the chip is silent at once`() {
+        /* at fast tempos a word that faded early sounded cut off, and one that rang on ran into the next */
+        val (out, phones) = sustained(Ph.AA, Ph.N)
+        val n = phones[1]
+        val end = (n.end - out.origin).toInt()
+        val body = rms(out.samples, out.middle(n))
+        val last = rms(out.samples, end - rate / 200, rate / 200)
+        val after = rms(out.samples, end + rate * 15 / 1000, rate / 100)
+        assertTrue("last 5 ms at ${Analysis.db(last / body)} dB", last > body * 0.5)
+        assertTrue("10 to 20 ms into the rest at ${Analysis.db(after / body)} dB", after < body * 0.01)
+    }
+
     @Test fun `every hiss comes out as noise, quieter than a vowel`() {
         val (out, phones) = sustained(Ph.AA, Ph.S, Ph.SH, Ph.F)
         val vowel = rms(out.samples, out.middle(phones[0]))

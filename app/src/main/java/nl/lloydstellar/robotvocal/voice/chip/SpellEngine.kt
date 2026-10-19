@@ -35,27 +35,50 @@ class SpellEngine(private val source: VoiceEngine, private val sourceVoice: Stri
         return Rendered(speech.origin, ChipSynth(ChipTables.TMS5100, seed).render(frames, speech.samples.size, sampleRate))
     }
 
-    /** The phonemes in frames of at most 25 ms, a new frame at every phoneme, silence in between. */
+    /**
+     * The chip's frames for [phones]. Every phoneme is cut into pieces of at
+     * most 25 ms, each analysed around its middle, and a frame runs from the
+     * middle of one piece to the middle of the next: the chip glides from
+     * sound to sound across the border between them, as speech does, and a
+     * short consonant at a fast tempo keeps a moment of its own. Where the
+     * chip does not glide, when the voicing changes or after a rest, a frame
+     * starts exactly where the phoneme starts, so that sound comes on time.
+     * The rests themselves are silent frames.
+     */
     private fun spans(phones: List<TimedPhone>, origin: Long, rate: Int, length: Int): List<ChipEncoder.Span> {
         val longest = rate * FRAME_MS / 1000.0
-        val out = ArrayList<ChipEncoder.Span>()
+        val narrow = rate * 0.020
+        val wide = rate * 0.030
+        val keys = ArrayList<ChipEncoder.Span>()
+        fun rest(at: Double, hz: Double) {
+            keys += ChipEncoder.Span(at, at, at, narrow, false, hz, silent = true)
+        }
         var cursor = 0.0
-        var voiced = false
+        var voiced: Boolean? = null
         for (p in phones) {
-            val start = (p.start - origin).toDouble()
+            val start = max((p.start - origin).toDouble(), cursor)
             val end = (p.end - origin).toDouble()
-            /* a rest takes the voicing of what came before it, so the sound before it dies away instead of stopping */
-            if (start > cursor + 1) out += ChipEncoder.Span(cursor, start, voiced, p.pitchHz, silent = true)
-            val from = max(start, cursor)
-            val n = ceil((end - from) / longest).toInt().coerceAtLeast(1)
+            if (start > cursor + 1 || keys.isEmpty()) {
+                rest(cursor, p.pitchHz)
+                voiced = null
+            }
+            val n = ceil((end - start) / longest).toInt().coerceAtLeast(1)
+            val piece = (end - start) / n
+            val width = (piece * 1.5).coerceIn(narrow, wide)
+            if (voiced != p.ph.voiced) keys += ChipEncoder.Span(start, start, start + piece / 2, width, p.ph.voiced, p.pitchHz)
             for (i in 0 until n) {
-                out += ChipEncoder.Span(from + (end - from) * i / n, from + (end - from) * (i + 1) / n, p.ph.voiced, p.pitchHz)
+                val middle = start + piece * (i + 0.5)
+                keys += ChipEncoder.Span(middle, middle, middle, width, p.ph.voiced, p.pitchHz)
             }
             voiced = p.ph.voiced
             cursor = end
         }
-        if (length > cursor) out += ChipEncoder.Span(cursor, length.toDouble(), voiced, phones.last().pitchHz, silent = true)
-        return out
+        rest(cursor, phones.last().pitchHz)
+        /* each frame lasts until the next one starts; the last rest until the end */
+        return keys.mapIndexedNotNull { i, k ->
+            val end = keys.getOrNull(i + 1)?.start ?: max(length.toDouble(), k.start + 1)
+            if (end <= k.start) null else ChipEncoder.Span(k.start, end, k.at, k.width, k.voiced, k.hz, k.silent)
+        }
     }
 
     private companion object {

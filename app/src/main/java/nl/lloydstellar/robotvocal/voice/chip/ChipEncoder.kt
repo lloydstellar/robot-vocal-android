@@ -15,8 +15,20 @@ import kotlin.math.sqrt
  * voiced, and its pitch, come from the phonemes, so they are never guessed.
  */
 object ChipEncoder {
-    /** A stretch to encode, in output samples, with the voicing and pitch it must get; [silent] stretches stay silent. */
-    class Span(val start: Double, val end: Double, val voiced: Boolean, val hz: Double, val silent: Boolean = false)
+    /**
+     * A frame to encode, from [start] to [end] in output samples, analysed in
+     * a window of [width] around [at], with the voicing and pitch it must get;
+     * [silent] frames stay silent.
+     */
+    class Span(
+        val start: Double,
+        val end: Double,
+        val at: Double,
+        val width: Double,
+        val voiced: Boolean,
+        val hz: Double,
+        val silent: Boolean = false,
+    )
 
     /**
      * Encodes [spans] of [speech] (at [ChipTables.RATE]; output sample s is
@@ -26,7 +38,7 @@ object ChipEncoder {
      */
     fun encode(speech: FloatArray, scale: Double, spans: List<Span>, tables: ChipTables, level: Double = LEVEL): List<ChipFrame> {
         val chirp = chirpPower(tables)
-        val analyses = spans.map { analyse(speech, ((it.start + it.end) / 2 * scale).toInt(), if (it.voiced) chirp else null) }
+        val analyses = spans.map { analyse(speech, (it.at * scale).toInt(), (it.width * scale).toInt(), if (it.voiced) chirp else null) }
         val loudest = analyses.zip(spans).filter { !it.second.silent }.maxOfOrNull { it.first.rms } ?: 0.0
         return spans.mapIndexed { i, s ->
             val a = analyses[i]
@@ -39,7 +51,7 @@ object ChipEncoder {
     private class Analysis(val k: DoubleArray, val rms: Double)
 
     /**
-     * LPC of a 30 ms Hamming window around [centre]. A voiced frame is
+     * LPC of a Hamming window of [n] samples around [centre]. A voiced frame is
      * analysed with the spectrum of the chirp divided out ([chirp]), so that
      * the chirp through the frame's filter has the spectrum of the speech
      * again: the chip's source is far from flat, and without this the low
@@ -50,8 +62,7 @@ object ChipEncoder {
      * 3 % on average. Noise is flat and only gets the lift. The RMS is of the
      * speech itself, so a word keeps its loudness.
      */
-    private fun analyse(x: FloatArray, centre: Int, chirp: DoubleArray?): Analysis {
-        val n = WINDOW
+    private fun analyse(x: FloatArray, centre: Int, n: Int, chirp: DoubleArray?): Analysis {
         val buf = DoubleArray(n)
         var sum = 0.0
         for (i in 0 until n) {
@@ -143,7 +154,6 @@ object ChipEncoder {
         return best
     }
 
-    private const val WINDOW = 240
     private const val PRE_EMPHASIS = 0.7
     private const val BINS = 256
     /** cos(pi m / BINS) for m from 0 to 2 BINS; the sine is the same a quarter turn later. */
