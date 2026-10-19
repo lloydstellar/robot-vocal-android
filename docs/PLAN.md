@@ -276,7 +276,7 @@ From report 09:
 - The AI-generated content policy does not apply: no generative models. The user-generated content policy does not apply: nothing is shared between users.
 - Privacy policy page on lloydstellar.nl, written for this app (it goes online for LA2L, unlike the other apps).
 - Assets: icon 512 x 512, feature graphic 1024 x 500, at least four 1080 x 1920 screenshots with the real interface filling most of the frame, and a 20 to 30 second video, because a listing cannot play sound otherwise.
-- App icon: an electro robot head in profile, tilted back, singing a beam of sound out of the frame: flat shapes on the red of the first step key, drawn by `tools/make_icon.py`. It replaced a first icon (two lamps over band levels) that looked like a voice assistant.
+- App icon: after the sleeve of Computer World (1981): a computer terminal of that time on yellow, seen from above and a little from the side, with a robot on its screen in the style of the mannequins of early electro (slicked hair, a blank face, a red shirt and a black tie). The terminal is a small 3D model projected in perspective and drawn in flat shades by `tools/make_icon.py`. It replaced two earlier icons: two lamps over band levels, which looked like a voice assistant, and a robot head in profile.
 - The store package as for Spin Doctor: `tools/store/listing.md`, `privacy.html`, `LEESMIJ.txt` with the Play Console steps, graphics, screenshots, signed AAB.
 
 ## 19. Steps
