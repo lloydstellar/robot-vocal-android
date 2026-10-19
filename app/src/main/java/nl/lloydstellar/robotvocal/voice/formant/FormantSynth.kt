@@ -54,7 +54,7 @@ internal class AntiResonator {
 }
 
 /** The shape of the voice source: a glottal pulse sounds like a voice, the others like a machine. */
-enum class Source { GLOTTAL, SAW, SQUARE, PULSE }
+enum class Source { GLOTTAL, SAW, PULSE }
 
 /**
  * One frame of synthesizer parameters, set every [FormantSynth.FRAME] samples
@@ -151,7 +151,6 @@ internal class FormantSynth(private val rate: Int, private val source: Source, s
                 } else 0.0
             }
             Source.SAW -> (1.0 - 2.0 * phase) * 0.6
-            Source.SQUARE -> if (phase < 0.5) 0.45 else -0.45
             Source.PULSE -> if (phase < 0.18) 0.9 else -0.2
         }
     }

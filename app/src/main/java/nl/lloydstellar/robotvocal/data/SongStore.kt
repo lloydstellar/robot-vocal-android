@@ -51,6 +51,9 @@ class SongStore(private val dir: File) {
     }
 
     companion object {
+        /** Voices that were replaced, and the voice a song with one of them gets now. */
+        private val RENAMED = mapOf("formant/chip8" to "micro/home")
+
         val EXAMPLES = listOf(
             Song("example-tin-voice", "TIN VOICE", 124.0, listOf(
                 SongLine("I am the voice of the machine"),
@@ -69,7 +72,7 @@ class SongStore(private val dir: File) {
                 SongLine("Seven hundred miles of night"),
                 SongLine("Can you read me, can you hear"),
                 SongLine("Every signal crystal clear"),
-            ), flow = "halftime", voice = "formant/chip8", beat = "halftime"),
+            ), flow = "halftime", voice = "micro/home", beat = "halftime"),
         )
 
         fun toJson(s: Song): JSONObject = JSONObject().apply {
@@ -115,7 +118,7 @@ class SongStore(private val dir: File) {
                     )
                 },
                 flow = o.optString("flow", "robot8"),
-                voice = o.optString("voice", "formant/unit1"),
+                voice = o.optString("voice", "formant/unit1").let { RENAMED[it] ?: it },
                 effect = o.optString("effect", "dry"),
                 motion = o.optString("motion", "none"),
                 space = o.optString("space", "none"),

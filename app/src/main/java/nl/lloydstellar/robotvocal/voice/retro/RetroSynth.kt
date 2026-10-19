@@ -31,7 +31,7 @@ internal class RetroSynth(
     private val vibratoCents: Double,
     /** Song time of the first sample, in seconds: flutter and vibrato follow the song. */
     private val startSeconds: Double,
-) {
+) : FrameSynth {
     private val glottis = Glottis(rate)
     private var noise = if (seed == 0) 0x1E3779B9 else seed
     private val nasalPole = Resonator(rate)
@@ -54,7 +54,7 @@ internal class RetroSynth(
      * pitch of [frame]; the loudness glides from where the last block ended to
      * [frame]'s, so a block of a millisecond never steps.
      */
-    fun render(frame: DoubleArray, out: FloatArray, offset: Int, count: Int) {
+    override fun render(frame: DoubleArray, out: FloatArray, offset: Int, count: Int) {
         nasalPole.pole(frame[K.FNP], frame[K.BNP])
         nasalZero.zero(frame[K.FNZ], frame[K.BNZ])
         for (j in 0 until 5) cascade[j].pole(frame[K.F5 - j], frame[K.B5 - j])

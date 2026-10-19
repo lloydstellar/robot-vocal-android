@@ -38,8 +38,6 @@ class FormantEngine : VoiceEngine {
 
     val characters = listOf(
         FormantCharacter("unit1", "UNIT ONE", "A clean synthesizer voice, steady and clear", Source.GLOTTAL),
-        FormantCharacter("chip8", "CHIP EIGHT", "Square wave voice through 4-bit sound at 7.8 kHz", Source.SQUARE,
-            formantScale = 1.05, transitionMs = 15.0, stepMs = 10.0, crushRate = 7_800, crushBits = 4, breath = 0.0, note = 50),
         FormantCharacter("allophone", "ALLOPHONE", "Jumps from sound to sound like a 1970s speech chip", Source.SAW,
             transitionMs = 0.0, stepMs = 25.0, crushRate = 10_000, crushBits = 8, breath = 0.0, note = 47),
         FormantCharacter("robovox", "ROBOVOX", "A sung monotone with long vowels", Source.GLOTTAL,
