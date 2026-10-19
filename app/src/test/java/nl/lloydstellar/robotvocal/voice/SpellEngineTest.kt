@@ -72,6 +72,23 @@ class SpellEngineTest {
         assertTrue("10 to 20 ms into the rest at ${Analysis.db(after / body)} dB", after < body * 0.01)
     }
 
+    @Test fun `every word is said on its own, the next one starting on its step`() {
+        /* "go now" without a rest: two words, the second starting where the first ends */
+        var t = 0L
+        val phones = listOf(Ph.G to 0, Ph.OW to 0, Ph.N to 1, Ph.AW to 1).map { (ph, word) ->
+            val length = if (ph.vowel) rate / 5L else rate / 20L
+            TimedPhone(ph, t, t + length, stressed = true, pitchHz = 110.0, syllable = word, word = word, lineStart = word == 0)
+                .also { t += length }
+        }
+        val out = engine.render(phones, "chip/speller", rate, seed = 1)
+        val start = (phones[2].start - out.origin).toInt()
+        val vowel = rms(out.samples, out.middle(phones[1]))
+        val before = rms(out.samples, start - rate * 4 / 1000, rate * 6 / 1000)
+        val after = rms(out.samples, start + rate * 5 / 1000, rate * 6 / 1000)
+        assertTrue("the end of the first word at ${Analysis.db(before / vowel)} dB", before < vowel * 0.03)
+        assertTrue("the start of the second word at ${Analysis.db(after / vowel)} dB", after > vowel * 0.1)
+    }
+
     @Test fun `every hiss comes out as noise, quieter than a vowel`() {
         val (out, phones) = sustained(Ph.AA, Ph.S, Ph.SH, Ph.F)
         val vowel = rms(out.samples, out.middle(phones[0]))
