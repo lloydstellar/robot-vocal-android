@@ -32,9 +32,12 @@ app/src/main/assets/licenses/ and the app shows them under About.
   are ported to Kotlin in app/src/main/java/nl/lloydstellar/robotvocal/voice/retro,
   and its transcription of the letter-to-sound rules of NRL Report 7948 (1976,
   public domain) is in app/src/main/java/nl/lloydstellar/robotvocal/text.
-- The chirp table of US patent 4,209,836 as tabulated in MAME
-  (src/devices/sound/tms5110r.hxx), Copyright Frank Palazzolo, Couriersud and
-  Jonathan Gevaryahu, BSD-3-Clause.
+- MAME's TMS5100 speech chip (https://github.com/mamedev/mame,
+  src/devices/sound/tms5110.cpp and tms5110r.hxx), Copyright Frank Palazzolo,
+  Jarek Burczynski, Aaron Giles, Jonathan Gevaryahu and Couriersud,
+  BSD-3-Clause. Its tables and its synthesis are ported to Kotlin in
+  app/src/main/java/nl/lloydstellar/robotvocal/voice/chip; the chirp is also in
+  the effect app/src/main/java/nl/lloydstellar/robotvocal/dsp/LpcChip.kt.
 - The plate reverb follows Freeverb by Jezar at Dreampoint (public domain).
 - The fonts Barlow (Copyright 2017 The Barlow Project Authors) and DSEG
   (Copyright 2020 keshikan), SIL Open Font License 1.1.

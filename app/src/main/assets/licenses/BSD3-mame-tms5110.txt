@@ -1,7 +1,9 @@
-The chirp table of the spelling chip voice (app/src/main/java/nl/lloydstellar/robotvocal/dsp/LpcChip.kt)
-is the one of US patent 4,209,836, as tabulated in MAME, src/devices/sound/tms5110r.hxx.
+The speech chip voice (app/src/main/java/nl/lloydstellar/robotvocal/voice/chip) is a port of the
+TMS5100 emulation in MAME: its tables (energy, reflection coefficients, chirp and interpolation, from
+src/devices/sound/tms5110r.hxx) and its synthesis (src/devices/sound/tms5110.cpp). The spelling chip
+effect (app/src/main/java/nl/lloydstellar/robotvocal/dsp/LpcChip.kt) uses the same chirp.
 
-Copyright Frank Palazzolo, Couriersud, Jonathan Gevaryahu.
+Copyright Frank Palazzolo, Jarek Burczynski, Aaron Giles, Jonathan Gevaryahu, Couriersud.
 License: BSD-3-Clause
 
 Redistribution and use in source and binary forms, with or without modification, are permitted

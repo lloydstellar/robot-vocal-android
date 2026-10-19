@@ -19,8 +19,11 @@ import kotlin.math.sqrt
  * a burst of three tones. Their levels, the sine and the sum have [bits] bits;
  * the voice moves in steps of about [stepRate] a second and holds each one;
  * hiss is 1-bit noise. That is the method of S.A.M. (Software Automatic Mouth,
- * 1982) as described with its C port; the formants and levels come from the
- * phoneme table of the retro engine, not from S.A.M.
+ * 1982) as the README of its C port describes it ("A = A1 * sin(f1 * t) +
+ * A2 * sin(f2 * t) + A3 * rect(f3 * t)", 4-bit amplitudes, 4-bit output),
+ * with the oscillators restarted every pitch period. Nothing else is taken
+ * from S.A.M.: the formants and levels come from the retro engine's phoneme
+ * table, the rest from Klatt (1980).
  *
  * Every period is a whole number of steps, as on the old machines, so all the
  * grit of the coarse steps is harmonic and the voice buzzes instead of
@@ -78,10 +81,10 @@ internal class MicroSynth(
             for (j in 0 until 4) gain[j] += delta[j]
             val voice = voice(frame[K.F0])
             val hiss = hiss(frame)
-            /* in z, v and zh the hiss takes the last quarter of every period, the voice the rest */
+            /* in z, v and zh the hiss rides on the voice, at half strength in the first half of each period (Klatt 1980) */
             val x = when {
                 !running -> hiss
-                fricative && index >= period * VOICE_SHARE -> hiss
+                fricative -> voice * VOICE_GAIN + hiss * (if (index < period / 2) 0.5 else 1.0)
                 else -> voice * VOICE_GAIN
             }
             out[offset + i] = (dac(x) * OUTPUT).toFloat()
@@ -216,7 +219,6 @@ internal class MicroSynth(
     }
 
     private companion object {
-        const val VOICE_SHARE = 0.75
         const val VOICE_GAIN = 0.45
         const val HISS_GAIN = 0.2
         const val ASPIRATION = 0.5

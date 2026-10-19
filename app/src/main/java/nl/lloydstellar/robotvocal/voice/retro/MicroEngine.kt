@@ -6,9 +6,11 @@ import nl.lloydstellar.robotvocal.voice.VoiceEngine
 import nl.lloydstellar.robotvocal.voice.VoiceInfo
 
 /**
- * A voice of the home computer engine. [mouth] and [throat] move the first
- * and second formant, the two knobs the software voices of 1982 had besides
- * pitch and speed: above 1 a smaller mouth or a shorter throat.
+ * A voice of the home computer engine. [mouth] and [throat] are the two knobs
+ * the software voices of 1982 had besides pitch and speed. Here the mouth
+ * moves the first formant, which follows how far the mouth opens, and the
+ * throat the second and higher ones, which follow the length of the tract:
+ * above 1 a smaller mouth or a shorter throat.
  */
 internal class MicroVoice(
     val id: String,
