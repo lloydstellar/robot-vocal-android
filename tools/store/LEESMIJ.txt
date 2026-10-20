@@ -1,5 +1,14 @@
-ROBOT VOCAL 1.0.0, alles voor de Play Store
+ROBOT VOCAL, alles voor de Play Store
 Pakketnaam: nl.lloydstellar.robotvocal
+
+UPDATE 1.1.0 (versionCode 2): beter verstaanbare robots
+1. Testen en releasen > Productie (of de track waar 1.0.0 staat) > Nieuwe release.
+2. app-release.aab uit robot-vocal-playstore-1.1.0.zip uploaden.
+3. Release-opmerkingen: de teksten onder "Release notes" in listing.md,
+   Engels en Nederlands.
+4. Store-vermelding: in de volledige beschrijving staat nu een zin over de
+   vocal-keten (Engels en Nederlands, listing.md). Screenshots blijven gelijk.
+5. Opslaan, controleren, uitrollen.
 
 WAT ZIT ERIN (map tools/store, het AAB in app/build/outputs/bundle/release)
   app-release.aab                 het bestand dat je uploadt (ondertekend met de upload-sleutel)

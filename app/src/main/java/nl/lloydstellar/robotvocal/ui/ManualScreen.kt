@@ -33,9 +33,12 @@ private val TOPICS = listOf(
     Topic("VOICE", "49 voices from six speech engines: our own formant voices, home computer voices that speak the way the " +
         "software of 1982 did, the retro voices of whackintalk (talking computers of the mid-1980s; some of them sing a tune over " +
         "your notes), the kal voice of Flite, SPELLER on the speech chip of a 1978 talking toy, and the voices of eSpeak NG. " +
-        "The pitch sets the note the voice speaks on, and the note the vocoders and talkboxes sing."),
+        "The pitch sets the note the voice speaks on, and the note the vocoders and talkboxes sing. Every voice gets the low end " +
+        "cut, the presence range lifted and its soft consonants brought up, so its words stay clear over a beat, and a " +
+        "de-esser keeps its s from hissing."),
     Topic("EFFECT", "Twenty robot effects: vocoders after the hardware of the late 1970s, talkboxes, a speech chip at 8 kHz, ring " +
-        "modulation, combs, phasers, gates in 16ths. Effects that move, move in bars, so they stay in time."),
+        "modulation, combs, phasers, gates in 16ths. Effects that move, move in bars, so they stay in time. Every voice reaches the " +
+        "effect at the same level, and the vocoders and talkboxes switch to noise for s, f and t, as studio vocoders do."),
     Topic("OUT", "SAVE WAV writes the vocal to Music/Robot Vocal: 48 kHz, mono (stereo when a stereo effect is on), exactly a whole number of bars, so it loops without " +
         "a gap. Sound that rings past the end is folded to the start, and a pickup before bar 1 to the end. The example beat is " +
         "never in the file. SEND TO LIVE puts it in Ableton Live with LA2L, warped to your Set's tempo."),

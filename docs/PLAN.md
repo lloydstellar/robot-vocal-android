@@ -2,8 +2,9 @@
 
 Plan of 18 October 2026. The research behind it is in [docs/research](research/):
 engines (01), rap flow (03), beat alignment (04), singing and rap synthesis (05),
-robot effects (06), Android (07), LA2L (08) and Google Play (09). Report 02 covers
-neural voices, which this app leaves out.
+robot effects (06), Android (07), LA2L (08), Google Play (09), the home computer
+voice (10), the speech chip voice (11) and clear robot voices (12). Report 02
+covers neural voices, which this app leaves out.
 
 ## Status, 18 October 2026
 
@@ -11,6 +12,7 @@ Steps 1 to 5, 7 and 9 are built and on GitHub; steps 6 and 8 are partly done.
 
 - Built: the front panel look, lyrics to syllables, eleven flows with the placement algorithm, sample-exact timing with the vowel on the beat, 49 voices (five formant characters, five home computer voices, eighteen retro voices ported from whackintalk, Flite kal, SPELLER on an emulated TMS5100, nineteen eSpeak NG voices), 21 robot effects plus movement and space effects (delays on the beat, echo throws, plates, ping-pong, a wide chorus, auto-pan, tape stops, reverse swells), a note and a stutter per syllable, example beats, WAV export in mono or stereo, Send to Live with LA2L, About, Manual, icon, store graphics and a signed release build.
 - Changed on the way: the effects are written in Kotlin instead of C++ (offline rendering is fast enough, and every effect is tested on the JVM). The retro voices keep whackintalk's synthesizer, phoneme table and voice settings, under names of our own; tempo and pitch come from the song, so its speaking rates and intonation are left out.
+- Version 1.1.0, 20 October 2026: clearer words (report 12). Every voice goes through a vocal chain (high-pass, presence shelf, a fast compressor gated by the phonemes, a de-esser by phoneme); the effects get every voice at one level and compress it in two stages; vocoders and talkboxes switch to noise for unvoiced phonemes; the crushers count their steps from the loudest moment.
 - Still open: the ClusterGen voices of Flite (slt, rms, awb need a patch for exact durations), the other candidates of section 3.2 and a chord track.
 
 ## 1. What the app does
@@ -158,7 +160,7 @@ Every noise source has a fixed seed, every syllable render is cached by its inpu
 The effect engine is C++ through the NDK, 48 kHz float, blocks of 256 frames, with parameters that can follow the grid (per bar or per step). Building blocks (report 06):
 
 - Channel vocoder, 8 to 32 bands, the Brazen Head design as a starting point (paired band-pass filters, envelope followers, a separate path for consonants so s and t stay audible), carriers saw, square, pulse, supersaw, noise and chords.
-- Talkbox (mda TalkBox, MIT or GPL), LPC re-synthesis (the chip voice of section 3), ring modulation, comb and tight-delay resonators, phaser, flanger, bitcrusher and sample-rate reduction, hard tune and monotone (WORLD, BSD-3), Codec2 at 700 and 1300 bit/s (LGPL-2.1), formant shift, stutter and gate locked to 16ths, drive, and a clean-up chain before every effect (EQ, compressor, de-esser).
+- Talkbox (mda TalkBox, MIT or GPL), LPC re-synthesis (the chip voice of section 3), ring modulation, comb and tight-delay resonators, phaser, flanger, bitcrusher and sample-rate reduction, hard tune and monotone (WORLD, BSD-3), Codec2 at 700 and 1300 bit/s (LGPL-2.1), formant shift, stutter and gate locked to 16ths, drive, and a clean-up chain before every effect (EQ, compressor, de-esser). As built (report 12): a vocal chain on every voice (high-pass, presence shelf, a compressor gated by the phonemes, a de-esser that knows where every s is), then before every effect one working level, a fast and a slow compressor.
 
 Twenty starting presets: Brazen Head I, II and III, Flat Twenty, Sixteen Channel, Vocoder Plus, Supersaw Choir, Golden Throat, NuVo Talker, Hard Tune, Robovox Singer, Monotone Unit, Speak & Spell, Codec 700, Exterminator, Centurion, Phase Robot, Whisper Unit, Tin Can, Tight Delay Electro, Stutter MC, Bass Droid. Names that point to products or films get renamed before release.
 
