@@ -166,14 +166,18 @@ object Renderer {
         return phones[found].pitchHz
     }
 
-    /** How much of the voice is noise at a song frame: the [Excitation] of the phone sounding there, none in a rest. */
+    /**
+     * How much of the voice is noise at a song frame, for the carrier of a
+     * vocoder or talkbox ([Excitation.carrier]); between parts, in a closure
+     * or a rest, the carrier stays as it was.
+     */
     private fun noiseTrack(phones: List<TimedPhone>, rate: Int): (Long) -> Double {
-        val parts = phones.flatMap { Excitation.parts(it.ph, it.start.toDouble(), it.end.toDouble(), rate) }
+        val parts = phones.flatMap { Excitation.carrier(it.ph, it.start.toDouble(), it.end.toDouble(), rate) }
         val starts = DoubleArray(parts.size) { parts[it].start }
         return { frame ->
             val found = Arrays.binarySearch(starts, frame.toDouble())
             val i = if (found >= 0) found else -found - 2
-            parts.getOrNull(i)?.takeIf { frame < it.end }?.noise ?: 0.0
+            parts.getOrNull(i)?.noise ?: 0.0
         }
     }
 

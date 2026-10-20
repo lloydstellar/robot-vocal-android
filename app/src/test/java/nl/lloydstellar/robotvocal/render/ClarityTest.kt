@@ -31,13 +31,21 @@ class ClarityTest {
     private fun db(x: FloatArray, from: Int, to: Int): Double =
         20 * log10(sqrt(((from + 100) * ms until (to + 100) * ms).sumOf { (x[it] * x[it]).toDouble() } / ((to - from) * ms)))
 
-    @Test fun `a soft consonant comes up towards the vowels, and the loudest vowel keeps its level`() {
-        /* at 400 Hz, where the filters do next to nothing: a consonant 20 dB under its vowel comes up the most there is, 12 dB */
+    @Test fun `a soft voiced consonant comes up towards the vowels, and the loudest vowel keeps its level`() {
+        /* at 400 Hz, where the filters do next to nothing: an m 20 dB under its vowel comes up the most there is, 6 dB */
         val x = buffer(listOf(0.0, 80.0, 400.0, 0.05), listOf(80.0, 300.0, 400.0, 0.5))
         val y = x.copyOf()
-        Clarity.apply(y, origin, listOf(phone(Ph.T, 0, 80, 0), phone(Ph.AA, 80, 300, 0)), rate)
-        assertEquals(-8.0, db(y, 20, 70) - db(y, 150, 290), 0.5)
+        Clarity.apply(y, origin, listOf(phone(Ph.M, 0, 80, 0), phone(Ph.AA, 80, 300, 0)), rate)
+        assertEquals(-14.0, db(y, 20, 70) - db(y, 150, 290), 0.5)
         assertEquals(0.0, db(y, 150, 290) - db(x, 150, 290), 0.2)
+    }
+
+    @Test fun `the burst of a t stays as soft as it was`() {
+        /* the compressor lifts voice, not noise: a burst lifted as far as an m would be a hard click of hiss between the words */
+        val x = buffer(listOf(0.0, 200.0, 400.0, 0.5), listOf(270.0, 290.0, 400.0, 0.05), listOf(290.0, 500.0, 400.0, 0.5))
+        val y = x.copyOf()
+        Clarity.apply(y, origin, listOf(phone(Ph.AA, 0, 200, 0), phone(Ph.T, 200, 290, 1), phone(Ph.AA, 290, 500, 1)), rate)
+        assertEquals(-20.0, peak(y, 272, 288) - peak(y, 20, 190), 1.0)
     }
 
     @Test fun `the low end goes down and the presence range up`() {
@@ -57,10 +65,10 @@ class ClarityTest {
     @Test fun `an s as loud as its vowel comes down to 6 dB under it, and a soft one stays soft`() {
         /*
          * The shelf lifts a 6 kHz hiss by 6 dB on the way and the de-esser takes it down again: to 6 dB under the
-         * vowel, or a little more, since it blends the hiss with the band under 2.5 kHz rather than cutting it off.
-         * An s 30 dB down comes up 12 dB with the compressor and 6 with the shelf, and is left there.
+         * vowel, and a few dB further, since it measures and blends the hiss against the band under 2.5 kHz rather
+         * than cutting it off. An s 30 dB down only gets the 6 dB of the shelf, as the compressor lifts no noise.
          */
-        for ((amplitude, expected) in listOf(0.5 to -7.0, 0.016 to -12.0)) {
+        for ((amplitude, expected) in listOf(0.5 to -9.0, 0.016 to -24.0)) {
             val x = buffer(listOf(0.0, 200.0, 400.0, 0.5), listOf(200.0, 300.0, 6000.0, amplitude))
             val y = x.copyOf()
             Clarity.apply(y, origin, listOf(phone(Ph.AA, 0, 200, 0), phone(Ph.S, 200, 300, 0)), rate)

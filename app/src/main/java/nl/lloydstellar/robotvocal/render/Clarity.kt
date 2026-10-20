@@ -17,14 +17,17 @@ import kotlin.math.sqrt
  *
  * The lift moves loudness from the low end, which a bass line covers, to the
  * range above 2 kHz, where consonants are heard. The compressor brings what is
- * soft within a word (a t, an f, the end of a syllable) up towards the loudest
- * vowels of the take: [RATIO] to 1, at most [MOST_DB]. It only works where a
- * phoneme sounds, so a rest stays a rest: the gate before the compressor.
+ * soft in the voice (an m, an l, a weak vowel, the end of a syllable) up
+ * towards the loudest vowels of the take: [RATIO] to 1, at most [MOST_DB]. It
+ * only works where a phoneme sounds, so a rest stays a rest: the gate before
+ * the compressor. And it only lifts voice: the burst of a p, t or k, an h or an
+ * s are noise, and a compressor that lifts them turns them into hard bursts of
+ * hiss between the words, as every producer knows from breaths.
  *
  * The lift and the compressor bring s and sh up the most, so a de-esser
  * follows, as in every vocal chain: the hiss of s, sh, z, ch and j comes down
  * above 2.5 kHz until it is 6 dB under the vowel of its syllable, the softer
- * hiss of f and th until it is 10 dB under it. The app knows where those
+ * hiss of f, v and th until it is 10 dB under it. The app knows where those
  * sounds are, so nothing else is touched.
  *
  * A few passes over the take and no buffers beside it, so a long song costs
@@ -49,15 +52,22 @@ object Clarity {
         if (top <= 0) return
         val envelope = Envelope(x, rate)
         val gate = Gate(spans, rate)
+        val noise = Noise(phones, origin, rate)
+        val glide = exp(-1000.0 / (NOISE_GLIDE_MS * rate))
+        /* the glide looks ahead by its own time, so it is half way where the noise starts */
+        val ahead = (NOISE_GLIDE_MS * rate / 1000).toInt()
+        var share = 0.0
         for (i in x.indices) {
             val power = envelope.next(i)
+            /* a sound that is half noise, as v and z, is not lifted either: its hiss would come up with it */
+            share = glide * share + (1 - glide) * min(1.0, 2 * noise.at(i + ahead))
             val open = gate.at(i)
             if (open <= 0f) continue
             val db = 10 * log10(power / top + 1e-30)
             var gain = min(db * (1 / RATIO - 1), MOST_DB)
             /* what is near silence (a stop's closure, the very end of a tail) is not lifted to the level of a consonant */
             if (db < QUIET_DB) gain *= ((db - SILENT_DB) / (QUIET_DB - SILENT_DB)).coerceIn(0.0, 1.0)
-            x[i] *= exp(gain * open * LN10 / 20).toFloat()
+            x[i] *= exp(gain * open * (1 - share) * LN10 / 20).toFloat()
         }
         deEss(x, origin, phones, rate)
     }
@@ -70,7 +80,7 @@ object Clarity {
         for (p in phones) {
             val most = HISSES[p.ph] ?: continue
             val vowel = vowels[p.syllable] ?: continue
-            val hiss = peak(x, p.start - origin, p.end - origin, rate)
+            val hiss = peak(x, p.start - origin, p.end - origin, rate, above = SPLIT_HZ)
             val voice = peak(x, vowel.start - origin, vowel.end - origin, rate)
             if (hiss <= 0 || voice <= 0) continue
             val over = 20 * log10(hiss / voice) - most
@@ -94,21 +104,28 @@ object Clarity {
         }
     }
 
-    /** The RMS of the loudest 10 ms between samples [from] and [to] of [x]. */
-    private fun peak(x: FloatArray, from: Long, to: Long, rate: Int): Double {
-        val n = rate / 100
+    /**
+     * The RMS of the loudest 10 ms between samples [from] and [to] of [x], of
+     * the part above [above] Hz if it is given: the hiss of a consonant, not
+     * the end of the vowel that may ring on into it.
+     */
+    private fun peak(x: FloatArray, from: Long, to: Long, rate: Int, above: Double = 0.0): Double {
         val a = from.coerceIn(0, x.size.toLong()).toInt()
         val b = to.coerceIn(a.toLong(), x.size.toLong()).toInt()
-        if (b - a < n) {
-            var sum = 0.0
-            for (i in a until b) sum += x[i].toDouble() * x[i]
-            return if (b > a) sqrt(sum / (b - a)) else 0.0
-        }
+        if (b <= a) return 0.0
+        val v = DoubleArray(b - a)
+        if (above > 0) {
+            /* the band under [above], settled over the 5 ms before, taken off */
+            val lowPass = Biquad.lowPass(above, 0.7071, rate)
+            for (i in max(0, a - rate / 200) until a) lowPass.process(x[i].toDouble())
+            for (i in a until b) v[i - a] = x[i] - lowPass.process(x[i].toDouble())
+        } else for (i in a until b) v[i - a] = x[i].toDouble()
+        val n = min(rate / 100, v.size)
         var sum = 0.0
-        for (i in a until a + n) sum += x[i].toDouble() * x[i]
+        for (i in 0 until n) sum += v[i] * v[i]
         var best = sum
-        for (i in a + n until b) {
-            sum += x[i].toDouble() * x[i] - x[i - n].toDouble() * x[i - n]
+        for (i in n until v.size) {
+            sum += v[i] * v[i] - v[i - n] * v[i - n]
             best = max(best, sum)
         }
         return sqrt(max(0.0, best) / n)
@@ -126,6 +143,22 @@ object Clarity {
             if (last != null && a <= last[1] + ramp) last[1] = max(last[1], b) else out += longArrayOf(a, b)
         }
         return out
+    }
+
+    /**
+     * How much of the voice is noise, sample after sample, from the [Excitation]
+     * of the phoneme there: all of a p, t or k, wherever its burst falls, and
+     * none in a rest.
+     */
+    private class Noise(phones: List<TimedPhone>, origin: Long, rate: Int) {
+        private val parts = phones.flatMap { Excitation.parts(it.ph, (it.start - origin).toDouble(), (it.end - origin).toDouble(), rate) }
+        private var k = 0
+
+        fun at(i: Int): Double {
+            while (k < parts.size && parts[k].end <= i) k++
+            val part = parts.getOrNull(k) ?: return 0.0
+            return if (i >= part.start) part.noise else 0.0
+        }
     }
 
     /** 1 inside the spans, 0 between them, with a ramp of [RAMP_MS] across every edge; asked for one sample after the other. */
@@ -177,21 +210,25 @@ object Clarity {
     }
 
     /** How loud each hiss may be next to its vowel, in dB. */
-    private val HISSES = mapOf(Ph.S to -6.0, Ph.SH to -6.0, Ph.Z to -6.0, Ph.ZH to -6.0, Ph.CH to -6.0, Ph.JH to -6.0, Ph.F to -10.0, Ph.TH to -10.0)
+    private val HISSES = mapOf(
+        Ph.S to -6.0, Ph.SH to -6.0, Ph.Z to -6.0, Ph.ZH to -6.0, Ph.CH to -6.0, Ph.JH to -6.0,
+        Ph.F to -10.0, Ph.TH to -10.0, Ph.V to -10.0, Ph.DH to -10.0,
+    )
     private const val MOST_CUT_DB = 12.0
     private const val SPLIT_HZ = 2500.0
     private const val DE_ESS_RAMP_MS = 5
     private const val LOW_CUT_HZ = 90.0
     private const val PRESENCE_HZ = 2000.0
     private const val PRESENCE_DB = 6.0
-    private const val RATIO = 3.0
-    private const val MOST_DB = 12.0
+    private const val RATIO = 2.0
+    private const val MOST_DB = 6.0
     private const val QUIET_DB = -40.0
     private const val SILENT_DB = -55.0
     private const val WINDOW_MS = 5
     private const val ATTACK_MS = 1.0
     private const val RELEASE_MS = 15.0
     private const val REACH_MS = 15
+    private const val NOISE_GLIDE_MS = 5.0
     private const val RAMP_MS = 10
     private val LN10 = ln(10.0)
 }

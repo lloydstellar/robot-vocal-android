@@ -5,8 +5,9 @@ Research for Robot Vocal: how to make the robots easier to understand in a track
 ## 1. Key findings
 
 - **The advice comes down to four things.** Bring up the soft parts of words (clip gain on consonants, then compression), give the vocoder more highs and less low end, give s and t a path of their own, and keep the level going in steady. Speech research says the same about speech in noise: at the same loudness, speech gets clearer when its energy moves up to the range of 1 to 4 kHz and its soft parts come up (SSDRC, Zorila, Kandia and Stylianou 2012), and that also works on synthetic speech (Valentini-Botinhao et al. 2013, about 4 dB).
-- **Presence and a fast compressor on every voice.** Measured as in section 4, a high-pass, a shelf of 6 dB above 2 kHz and a compressor of 3 to 1 together with the other changes gave 6 more words in 100 against an electro beat at the same loudness (from 23 to 29, averaged over 16 voices), and about the same in quiet. The app now does this to every voice before any effect.
-- **The lift needs a de-esser.** The shelf and the compressor made s and sh as loud as the vowels or louder (from about 7 dB under them to 0 to 3 dB over), and Lloyd heard it at once: a sharp s on many voices. A de-esser that knows where every s is now takes them back to 6 dB under their vowel, and f and th to 10 dB.
+- **Presence and a fast compressor on every voice.** Measured as in section 4, a high-pass, a shelf of 6 dB above 2 kHz and a fast compressor together with the other changes gave 6 more words in 100 against an electro beat at the same loudness (from 23 to 29, averaged over 16 voices). The app now does this to every voice before any effect.
+- **The compressor may only lift voice.** At first it lifted everything soft by up to 12 dB, and the bursts of p, t and k, the h and the f came up from 10 to 15 dB under their vowel to 1 to 4 dB under it: hard short bursts of hiss between the letters, which Lloyd heard at once. Now it lifts only what is voice (an m, an l, a weak vowel), by at most 6 dB at 2 to 1, and leaves every sound that is noise or half noise where it was. That sounds cleaner and measured better too: over six voices, 53 words in 100 in quiet where the first version had 49 and version 1.0.0 44, and the same 30 with the beat.
+- **The lift needs a de-esser.** The shelf and the compressor made s and sh as loud as the vowels or louder (from about 7 dB under them to 0 to 3 dB over), and Lloyd heard it at once: a sharp s on many voices. A de-esser that knows where every s is now takes them back to 6 dB under their vowel, and f, v and th to 10 dB.
 - **Clip gain per consonant did not work** for the app's voices. Bringing every consonant to a set level next to its vowel helped DESKTOP by 9 words in 100 and cost TIN MAN 7; louder f, th, s and h were the cause. A milder setting and a version that lifted only the highs of the consonants did no better. It is left out.
 - **Two faults made effects harder to follow.** The engines speak at levels up to 40 dB apart: UNIT ONE peaks 10 dB above full scale, the retro voices sit 30 dB below it. So the compressor before every effect took 15 to 18 dB off UNIT ONE and nothing off the retro voices. And the crushers of BRAZEN HEAD I and TIN CAN counted their 5 and 6 bits from full scale, so on a quiet voice the steps were coarser than the voice. Now every voice reaches the effects at one level and a crusher counts from the loudest moment. With kal, in quiet, these two fixes alone took BRAZEN HEAD I from 6 to 27 words in 100 and TIN CAN from 15 to 53; with everything else, to 50 and 69.
 - **Lines sounded over each other.** A line that starts with a pickup ("the", "a") runs up into the bar of the line before, whose last word was planned to the end of that bar: the two overlapped by up to 140 ms in ROBOT 8THS, and the last consonant of the line was lost under the pickup. Flite, which speaks its phones one after the other, then fell behind the plan by the overlap, line after line: in a test of 16 lines kal and SPELLER ended a second behind the beat. Now the next line goes first, as a rapper cuts a held word short: the last word of a line ends 10 ms before the pickup's first consonant, and Flite's phones always end on their planned ends.
@@ -31,9 +32,9 @@ Research for Robot Vocal: how to make the robots easier to understand in a track
 
 ## 3. What the app does now
 
-- **Voice chain** (`render/Clarity.kt`), on every voice before any effect, so also on DRY: high-pass at 90 Hz, shelf of 6 dB above 2 kHz, then a compressor that follows the voice in 5 ms windows with 1 ms attack and 15 ms release and brings every moment up towards the loudest moment of the take, 3 to 1 and at most 12 dB. What lies more than 40 dB down is lifted less and less, and nothing more than 55 dB down, so a stop's closure stays a gap. It only works within 15 ms of a phoneme. Last comes the de-esser: every s, sh, z, ch and j louder than 6 dB under the vowel of its syllable (f and th: 10 dB) is blended towards its own band under 2.5 kHz until it is not, by at most 12 dB, with 5 ms ramps.
+- **Voice chain** (`render/Clarity.kt`), on every voice before any effect, so also on DRY: high-pass at 90 Hz, shelf of 6 dB above 2 kHz, then a compressor that follows the voice in 5 ms windows with 1 ms attack and 15 ms release and brings it up towards the loudest moment of the take, 2 to 1 and at most 6 dB. It lifts only voice: where the phonemes say noise (all of p, t, k, f, s, sh, h, ch, the bursts of b, d and g, and v, z and the th of "this", which are half noise) it lifts nothing, with a glide of 5 ms. What lies more than 40 dB down is lifted less and less, so a stop's closure stays a gap, and it only works within 15 ms of a phoneme. Last comes the de-esser: every s, sh, z, ch and j whose hiss above 2.5 kHz is louder than 6 dB under the vowel of its syllable (f, v and th: 10 dB) is blended towards its own band under 2.5 kHz until it is not, by at most 12 dB, with 5 ms ramps.
 - **Before every effect** (`dsp/RobotPresets.kt`): the voice to a working level of -20 dBFS RMS, a high-pass at 70 Hz, the two compressors, and the voice to -18 dBFS for the effect. The level is the RMS of the 20 ms frames within 40 dB of the loudest.
-- **Vocoder** (`dsp/Vocoder.kt`): the carrier turns to noise over 3 ms where the voice is noise: a whole p, t, k, f, s, sh, h and ch, the last 20 ms of b, d and g (their burst) and the second half of the j of "judge"; v, z and the th of "this" get half noise and half carrier. Attack and release as in section 2.
+- **Vocoder** (`dsp/Vocoder.kt`): the carrier turns to noise over 3 ms where the voice is noise: a whole f, s, sh and h, the burst of p, t, k, b, d and g (their last 20 ms, at most 40 %) and the second half of ch and of the j of "judge"; v, z and the th of "this" get half noise and half carrier. In the silent closure of a stop the carrier stays as it was: the vowel before still rings in the bands for a few milliseconds, and on noise that ring was a short burst of hiss. Attack and release as in section 2.
 - **Talkbox**: the same switch.
 - **Crusher**: its steps are counted from the loudest moment of what it gets.
 - **SPELLING CHIP**: the voice is levelled so the loudest frame is energy step 12 of 15, as a recording was levelled before it was encoded; voicing comes from the phonemes.
@@ -164,6 +165,20 @@ Every vocoder and talkbox gained, most of all where the crusher drowned the voic
 | MOUTH TUBE on KAL | 13 | 28 | 28 | 2 | 4 | 3 |
 
 The de-esser takes the s back from as loud as the vowel to 6 dB under it and changes the scores by no more than chance.
+
+### 5.4 The final version: a gentler compressor that lifts only voice
+
+| | In quiet: 1.0.0 | first version | final | With the beat: 1.0.0 | first version | final |
+|---|---:|---:|---:|---:|---:|---:|
+| UNIT ONE | 48 | 52 | 60 | 31 | 33 | 34 |
+| KAL | 67 | 77 | 75 | 32 | 45 | 44 |
+| DESKTOP | 62 | 65 | 69 | 25 | 39 | 38 |
+| ROBOSOFT | 35 | 25 | 33 | 11 | 16 | 15 |
+| SPELLER | 23 | 35 | 38 | 13 | 20 | 19 |
+| STANDARD M | 41 | 38 | 42 | 28 | 26 | 32 |
+| **Mean** | **44.4** | **48.6** | **52.5** | **23.5** | **29.8** | **30.4** |
+
+The first version is the one with the strong compressor and the de-esser (section 5.3). The final one lifts only voice, by at most 6 dB: as clear with the beat, clearer in quiet, and without the bursts of hiss. Through the vocoders (BRAZEN HEAD I, MONOTONE UNIT, MOUTH TUBE on kal) it stays well above version 1.0.0.
 
 ## 6. Open
 

@@ -22,7 +22,7 @@ Robot Vocal turns typed lyrics into a robot rapping on your beat. Every syllable
 
 Type your lines and pick a flow: robot 8ths, one word per beat, triplets, half-time trap, boom bap with swing, rapid 16ths and more. Each flow places the syllables the way rappers do: stressed syllables on the strong steps, rests at commas, the rhyme on beat four. Move any syllable earlier or later on a step grid like a drum machine's.
 
-Pick one of 49 voices from six kinds of speech synthesis made in the app itself: formant voices from clean to 1970s chip, home computer voices that speak the way the software of 1982 did, talking computers of the mid-1980s (some of them sing a tune over your notes), the diphone voice of 1990s speech software, a voice on the speech chip of a 1978 talking spelling toy, and the robot and Klatt voices of eSpeak NG. Then put an effect on it: twenty-band vocoders that sing your chosen note, talkboxes, a speech chip at 8 kHz, ring modulation, combs, phasers, a gate in 16ths. Add a delay on the beat, an echo on the last word of every line, or a plate. Every voice first goes through a vocal chain that keeps the words clear over a beat: the soft consonants come up, and the vocoders and talkboxes switch to noise for s, f and t.
+Pick one of 49 voices from six kinds of speech synthesis made in the app itself: formant voices from clean to 1970s chip, home computer voices that speak the way the software of 1982 did, talking computers of the mid-1980s (some of them sing a tune over your notes), the diphone voice of 1990s speech software, a voice on the speech chip of a 1978 talking spelling toy, and the robot and Klatt voices of eSpeak NG. Then put an effect on it: twenty-band vocoders that sing your chosen note, talkboxes, a speech chip at 8 kHz, ring modulation, combs, phasers, a gate in 16ths. Add a delay on the beat, an echo on the last word of every line, or a plate. Every voice first goes through a vocal chain that keeps the words clear over a beat: the soft parts of the voice come up, the s does not hiss, and the vocoders and talkboxes switch to noise for s, f and t.
 
 Check the timing against an example beat: electro, Miami bass, boom bap, half-time, house, techno or a click. The beat is for listening only and never ends up in a file.
 
@@ -47,7 +47,7 @@ Robot Vocal maakt van getypte tekst een robot die op jouw beat rapt. Elke letter
 
 Typ je regels en kies een flow: robot-8sten, één woord per tel, triolen, half-time trap, boom bap met swing, snelle 16den en meer. Elke flow zet de lettergrepen zoals rappers dat doen: beklemtoonde lettergrepen op de sterke stappen, een rust bij een komma, het rijm op tel vier. Elke lettergreep schuif je met de hand een stap op of terug, op een rij stappen zoals op een drumcomputer.
 
-Kies een van 49 stemmen uit zes soorten spraaksynthese die de app zelf maakt: formantstemmen van strak tot jaren-70-chip, homecomputerstemmen die praten zoals de software van 1982, pratende computers uit het midden van de jaren 80 (een paar zingen een melodie over jouw noten), de difoonstem van spraaksoftware uit de jaren 90, een stem op de spraakchip van een pratende spellingcomputer uit 1978 en de robot- en Klatt-stemmen van eSpeak NG. Zet er dan een effect op: vocoders met twintig banden die op jouw noot zingen, talkboxes, een spraakchip op 8 kHz, ringmodulatie, kamfilters, phasers, een gate in 16den. Voeg een delay op de beat toe, een echo op het laatste woord van elke regel, of een plate. Elke stem gaat eerst door een vocal-keten die de woorden boven een beat verstaanbaar houdt: zachte medeklinkers komen omhoog, en de vocoders en talkboxes schakelen over op ruis voor s, f en t.
+Kies een van 49 stemmen uit zes soorten spraaksynthese die de app zelf maakt: formantstemmen van strak tot jaren-70-chip, homecomputerstemmen die praten zoals de software van 1982, pratende computers uit het midden van de jaren 80 (een paar zingen een melodie over jouw noten), de difoonstem van spraaksoftware uit de jaren 90, een stem op de spraakchip van een pratende spellingcomputer uit 1978 en de robot- en Klatt-stemmen van eSpeak NG. Zet er dan een effect op: vocoders met twintig banden die op jouw noot zingen, talkboxes, een spraakchip op 8 kHz, ringmodulatie, kamfilters, phasers, een gate in 16den. Voeg een delay op de beat toe, een echo op het laatste woord van elke regel, of een plate. Elke stem gaat eerst door een vocal-keten die de woorden boven een beat verstaanbaar houdt: de zachte delen van de stem komen omhoog, de s sist niet, en de vocoders en talkboxes schakelen over op ruis voor s, f en t.
 
 Controleer de timing op een voorbeeldbeat: electro, Miami bass, boom bap, half-time, house, techno of een klik. De beat is alleen om mee te luisteren en komt nooit in een bestand.
 
@@ -61,11 +61,11 @@ Ableton en Live zijn handelsmerken van Ableton AG. LA2L is niet gemaakt door Abl
 
 ## Release notes
 
-**1.1.0** (English, 380 of 500):
-`Clearer robots. Every voice gets a vocal chain that brings soft consonants up, and the vocoders and talkboxes switch to noise for s, f and t. A line that starts with a pickup no longer sounds over the last word of the line before, and kal and SPELLER stay on the beat in long songs. The effects treat every voice alike, and BRAZEN HEAD I and TIN CAN are no longer buried in noise.`
+**1.1.0** (English, 421 of 500):
+`Clearer robots. Every voice gets a vocal chain that brings the soft parts of the voice up and keeps the s from hissing, and the vocoders and talkboxes switch to noise for s, f and t. A line that starts with a pickup no longer sounds over the last word of the line before, and kal and SPELLER stay on the beat in long songs. The effects treat every voice alike, and BRAZEN HEAD I and TIN CAN are no longer buried in noise.`
 
-**1.1.0** (Nederlands, 417 van 500):
-`Robots die je beter verstaat. Elke stem krijgt een vocal-keten die zachte medeklinkers omhoog haalt, en de vocoders en talkboxes schakelen over op ruis voor s, f en t. Een regel die met een opmaat begint, klinkt niet meer over het laatste woord van de regel ervoor, en kal en SPELLER blijven in lange songs op de beat. De effecten behandelen elke stem gelijk, en BRAZEN HEAD I en TIN CAN verdrinken niet meer in ruis.`
+**1.1.0** (Nederlands, 450 van 500):
+`Robots die je beter verstaat. Elke stem krijgt een vocal-keten die de zachte delen van de stem omhoog haalt en de s niet laat sissen, en de vocoders en talkboxes schakelen over op ruis voor s, f en t. Een regel die met een opmaat begint, klinkt niet meer over het laatste woord van de regel ervoor, en kal en SPELLER blijven in lange songs op de beat. De effecten behandelen elke stem gelijk, en BRAZEN HEAD I en TIN CAN verdrinken niet meer in ruis.`
 
 ## Graphics
 

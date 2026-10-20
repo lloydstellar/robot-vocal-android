@@ -31,6 +31,18 @@ object Excitation {
         return listOf(Part(start, split, 0.0), Part(split, end, 1.0))
     }
 
+    /**
+     * What a vocoder or a talkbox should put under [ph]: its [parts], except
+     * that p, t, k and ch say nothing until their burst. Their closure is
+     * silence, and the sound before it still rings in the bands for a few
+     * milliseconds; switched to noise, that ring would be a burst of hiss.
+     */
+    fun carrier(ph: Ph, start: Double, end: Double, rate: Int): List<Part> = when (ph) {
+        Ph.P, Ph.T, Ph.K -> listOf(Part(end - min(rate * BURST_MS / 1000.0, (end - start) * 0.4), end, 1.0))
+        Ph.CH -> listOf(Part((start + end) / 2, end, 1.0))
+        else -> parts(ph, start, end, rate)
+    }
+
     /** Whether [ph] ends voiced: a voiced stop ends in its burst. */
     fun endsVoiced(ph: Ph): Boolean = ph.voiced && ph !in setOf(Ph.B, Ph.D, Ph.G, Ph.JH)
 
