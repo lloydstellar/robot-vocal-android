@@ -47,6 +47,18 @@ class Biquad private constructor(
             return make(1 + alpha * a, -2 * c, 1 - alpha * a, 1 + alpha / a, -2 * c, 1 - alpha / a)
         }
 
+        /** A shelf: [gainDb] above [freq], flat below, with the cookbook's steepest slope that does not overshoot. */
+        fun highShelf(freq: Double, gainDb: Double, rate: Int): Biquad {
+            val a = Math.pow(10.0, gainDb / 40)
+            val w = 2 * PI * freq / rate
+            val c = cos(w)
+            val beta = sin(w) * Math.sqrt(2 * a)
+            return make(
+                a * ((a + 1) + (a - 1) * c + beta), -2 * a * ((a - 1) + (a + 1) * c), a * ((a + 1) + (a - 1) * c - beta),
+                (a + 1) - (a - 1) * c + beta, 2 * ((a - 1) - (a + 1) * c), (a + 1) - (a - 1) * c - beta,
+            )
+        }
+
         /** Band-pass with 0 dB at the centre. */
         fun bandPass(freq: Double, q: Double, rate: Int): Biquad {
             val w = 2 * PI * freq / rate
