@@ -16,7 +16,9 @@ import kotlin.math.sqrt
  * the best known way to make speech clear in noise at the same loudness.
  *
  * The lift moves loudness from the low end, which a bass line covers, to the
- * range above 2 kHz, where consonants are heard. The compressor brings what is
+ * range above 2 kHz, where the formants that tell one vowel and one m or l
+ * from the next are heard. It lifts the voice only: the noise of a burst, an
+ * h or an s keeps its own colour, or it would tick and hiss. The compressor brings what is
  * soft in the voice (an m, an l, a weak vowel, the end of a syllable) up
  * towards the loudest vowels of the take: [RATIO] to 1, at most [MOST_DB]. It
  * only works where a phoneme sounds, so a rest stays a rest: the gate before
@@ -37,9 +39,21 @@ object Clarity {
     /** Applies the chain to [x], whose sample 0 is song frame [origin]. */
     fun apply(x: FloatArray, origin: Long, phones: List<TimedPhone>, rate: Int) {
         if (phones.isEmpty() || x.isEmpty()) return
+        val glide = exp(-1000.0 / (NOISE_GLIDE_MS * rate))
+        /* a glide looks ahead by its own time, so it is half way where the noise starts */
+        val ahead = (NOISE_GLIDE_MS * rate / 1000).toInt()
+
+        /* the presence lift is for the voice: the noise of a consonant keeps its own colour and level */
         val highPass = Biquad.highPass(LOW_CUT_HZ, 0.7071, rate)
         val shelf = Biquad.highShelf(PRESENCE_HZ, PRESENCE_DB, rate)
-        for (i in x.indices) x[i] = shelf.process(highPass.process(x[i].toDouble())).toFloat()
+        val colour = Noise(phones, origin, rate)
+        var plain = 0.0
+        for (i in x.indices) {
+            val cut = highPass.process(x[i].toDouble())
+            val bright = shelf.process(cut)
+            plain = glide * plain + (1 - glide) * min(1.0, 2 * colour.at(i + ahead))
+            x[i] = (bright + (cut - bright) * plain).toFloat()
+        }
 
         val spans = spans(phones, origin, x.size, rate)
         var top = 0.0
@@ -53,9 +67,6 @@ object Clarity {
         val envelope = Envelope(x, rate)
         val gate = Gate(spans, rate)
         val noise = Noise(phones, origin, rate)
-        val glide = exp(-1000.0 / (NOISE_GLIDE_MS * rate))
-        /* the glide looks ahead by its own time, so it is half way where the noise starts */
-        val ahead = (NOISE_GLIDE_MS * rate / 1000).toInt()
         var share = 0.0
         for (i in x.indices) {
             val power = envelope.next(i)

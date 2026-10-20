@@ -64,11 +64,11 @@ class ClarityTest {
 
     @Test fun `an s as loud as its vowel comes down to 6 dB under it, and a soft one stays soft`() {
         /*
-         * The shelf lifts a 6 kHz hiss by 6 dB on the way and the de-esser takes it down again: to 6 dB under the
-         * vowel, and a few dB further, since it measures and blends the hiss against the band under 2.5 kHz rather
-         * than cutting it off. An s 30 dB down only gets the 6 dB of the shelf, as the compressor lifts no noise.
+         * The de-esser takes a 6 kHz hiss as loud as its vowel down to 6 dB under it, and a few dB further, since it
+         * measures and blends the hiss against the band under 2.5 kHz rather than cutting it off. An s 30 dB down
+         * stays where it is: the shelf and the compressor are for the voice, not for its noise.
          */
-        for ((amplitude, expected) in listOf(0.5 to -9.0, 0.016 to -24.0)) {
+        for ((amplitude, expected) in listOf(0.5 to -9.0, 0.016 to -30.0)) {
             val x = buffer(listOf(0.0, 200.0, 400.0, 0.5), listOf(200.0, 300.0, 6000.0, amplitude))
             val y = x.copyOf()
             Clarity.apply(y, origin, listOf(phone(Ph.AA, 0, 200, 0), phone(Ph.S, 200, 300, 0)), rate)
