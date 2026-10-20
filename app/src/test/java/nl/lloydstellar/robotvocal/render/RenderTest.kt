@@ -48,6 +48,21 @@ class RenderTest {
         assertEquals("one gain for both", Renderer.PEAK, peak, 1e-4f)
     }
 
+    @Test fun `a line that starts with a pickup keeps its consonants and does not sound over the line before`() {
+        /* "the" runs up into the bar of the line before, whose last word lasts to the end of its bar */
+        val pickups = Song("pickups", "Pickups", 134.0, listOf(
+            SongLine("the map cried in the poor leg"), SongLine("the horse flew from the green pipe"),
+            SongLine("the sign slept on the hard boat"), SongLine("the page pushed the moon that slept"),
+        ))
+        val take = Renderer.render(pickups, Arranger.arrange(pickups, TestData.lyrics), engine)
+        for ((a, b) in take.phones.zipWithNext()) {
+            assertTrue("${b.ph} at ${b.start} starts before ${a.ph} ends at ${a.end}", b.start >= a.end)
+        }
+        val firsts = take.phones.filter { it.lineStart && !it.vowel && it.syllable > 0 }
+        assertEquals(3, firsts.size)
+        for (th in firsts) assertEquals("the th of \"the\" at ${th.start}", 50.0, (th.end - th.start) / 48.0, 0.5)
+    }
+
     @Test fun `every vowel starts exactly on its step`() {
         val arrangement = Arranger.arrange(song, TestData.lyrics)
         val take = Renderer.render(song, arrangement, engine)

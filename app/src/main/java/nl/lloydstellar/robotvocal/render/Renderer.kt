@@ -76,22 +76,30 @@ object Renderer {
         var syllableBase = 0
         var wordBase = 0
         val stutters = ArrayList<Pair<Int, Int>>() // syllable in the song, repeats
-        val phones = arrangement.lines.flatMap { line ->
-            val settings = TimingPlanner.Settings(
+        val settings = arrangement.lines.map { line ->
+            TimingPlanner.Settings(
                 bpm = song.bpm,
                 swing = song.swing ?: line.preset.swing,
                 offsetMs = line.preset.offsetMs,
                 gate = song.gate ?: line.preset.gate,
                 feel = song.feel,
             )
+        }
+        var lineEnd = Long.MIN_VALUE
+        val phones = arrangement.lines.flatMapIndexed { i, line ->
             val songLine = song.lines.getOrNull(line.index)
             val notes = songLine?.notes.orEmpty()
             songLine?.stutters?.forEach { (syllable, repeats) -> stutters += (syllableBase + syllable) to repeats }
-            planner.plan(line.lyric.syllables, line.placement, line.startTick, settings, syllableBase, wordBase) { syllable ->
+            /* where the next line would start on its own: this line makes way for it */
+            val nextStarts = arrangement.lines.getOrNull(i + 1)?.let { next ->
+                planner.plan(next.lyric.syllables, next.placement, next.startTick, settings[i + 1]) { 0.0 }.firstOrNull()?.start
+            } ?: Long.MAX_VALUE
+            planner.plan(line.lyric.syllables, line.placement, line.startTick, settings[i], syllableBase, wordBase, lineEnd, nextStarts) { syllable ->
                 hz(note + (notes[syllable] ?: 0))
             }.also {
                 syllableBase += line.lyric.syllables.size
                 wordBase += line.lyric.words.size
+                lineEnd = it.lastOrNull()?.end ?: lineEnd
             }
         }
         val loopFrames = Ticks.loopFrames(arrangement.bars * 4, song.bpm, sampleRate)

@@ -39,6 +39,11 @@ data class TimedPhone(
  * longer than half of the previous syllable's time, or a vowel squeezed by
  * its coda, is compressed towards Klatt's minimum durations (the auto-fit rule
  * of OpenUtau).
+ *
+ * Where one line meets the next, the next line goes first: a pickup into it
+ * ("the", "a") keeps its consonants, and the last word of this line ends
+ * 10 ms before them, as a rapper cuts a held word short for the next line.
+ * Only when even the shortest end does not fit is the pickup compressed.
  */
 class TimingPlanner(private val sampleRate: Int = SAMPLE_RATE) {
 
@@ -57,27 +62,31 @@ class TimingPlanner(private val sampleRate: Int = SAMPLE_RATE) {
         settings: Settings,
         syllableBase: Int = 0,
         wordBase: Int = 0,
+        /** Where the line before ends, and where the line after starts on its own: lines do not overlap. */
+        lineBeforeEnds: Long = Long.MIN_VALUE,
+        nextLineStarts: Long = Long.MAX_VALUE,
         pitchOf: (syllable: Int) -> Double,
     ): List<TimedPhone> {
         val perSlot = Ticks.perSlot(placement.slotsPerBar)
         val offset = ms(settings.offsetMs)
-        val beats = placement.placed.map { p ->
-            val tick = lineStartTick + p.slot * perSlot.toDouble()
-            Ticks.frame(Ticks.swung(tick, settings.swing), settings.bpm, sampleRate) + offset
-        }
+        val beats = beats(placement, lineStartTick, settings)
         val ends = placement.placed.map { p ->
             Ticks.frame(lineStartTick + (p.slot + p.length) * perSlot.toDouble(), settings.bpm, sampleRate) + offset
         }
 
         val out = ArrayList<TimedPhone>()
-        var previousEnd = Long.MIN_VALUE
+        var previousEnd = lineBeforeEnds
         for ((k, p) in placement.placed.withIndex()) {
             val syllable = syllables[p.syllable]
             val last = k == placement.placed.lastIndex
             val first = k == 0
             val beat = beats[k]
             val speakEnd = beat + ((ends[k] - beat) * settings.gate).roundToLong()
-            val nextStart = if (k + 1 < beats.size) beats[k + 1] - ms(15.0) else Long.MAX_VALUE
+            val nextStart = when {
+                k + 1 < beats.size -> beats[k + 1] - ms(15.0)
+                nextLineStarts == Long.MAX_VALUE -> Long.MAX_VALUE
+                else -> nextLineStarts - ms(10.0)
+            }
             val stressed = syllable.stress != Stress.NONE
 
             /* onset: natural lengths, run-up at most half of the previous syllable's time */
@@ -112,6 +121,15 @@ class TimingPlanner(private val sampleRate: Int = SAMPLE_RATE) {
             previousEnd = t
         }
         return out
+    }
+
+    /** The frame of every syllable's step in a line: where its vowel starts with feel 0. */
+    private fun beats(placement: LinePlacement, lineStartTick: Int, settings: Settings): List<Long> {
+        val perSlot = Ticks.perSlot(placement.slotsPerBar)
+        return placement.placed.map { p ->
+            val tick = lineStartTick + p.slot * perSlot.toDouble()
+            Ticks.frame(Ticks.swung(tick, settings.swing), settings.bpm, sampleRate) + ms(settings.offsetMs)
+        }
     }
 
     private fun lead(onsetFrames: Long, feel: Double): Long = min((feel * onsetFrames).roundToLong(), ms(60.0))
