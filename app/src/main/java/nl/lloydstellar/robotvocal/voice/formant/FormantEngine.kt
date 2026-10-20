@@ -1,6 +1,7 @@
 package nl.lloydstellar.robotvocal.voice.formant
 
 import nl.lloydstellar.robotvocal.render.TimedPhone
+import nl.lloydstellar.robotvocal.text.Manner
 import nl.lloydstellar.robotvocal.text.Ph
 import nl.lloydstellar.robotvocal.voice.Rendered
 import nl.lloydstellar.robotvocal.voice.VoiceEngine
@@ -140,7 +141,7 @@ private class Track(private val phones: List<TimedPhone>, private val c: Formant
                 f.bypass = target.bypass
             }
             Kind.ASPIRATE -> f.ah = target.ah
-            Kind.STOP -> stop(p, target, next, x, dur, f)
+            Kind.STOP -> stop(target, next, x, dur, f)
             Kind.AFFRICATE -> {
                 if (x < 0.4) {
                     f.av = target.av * 0.5
@@ -156,10 +157,16 @@ private class Track(private val phones: List<TimedPhone>, private val c: Formant
         if (next == null) f.scale(min(1.0, (p.end - t) / edge))
     }
 
-    /** A stop: closure (a low voice bar for b, d, g), a short burst of noise, then breath before a vowel for p, t, k. */
-    private fun stop(p: TimedPhone, target: Target, next: TimedPhone?, x: Double, dur: Double, f: Frame) {
+    /**
+     * A stop: closure (a low voice bar for b, d, g), a short burst of noise,
+     * then for p, t and k breath in the shape of what follows: a vowel, or the
+     * r, l, w or y of "cry", "play" and "twin", which come out without voice
+     * after them.
+     */
+    private fun stop(target: Target, next: TimedPhone?, x: Double, dur: Double, f: Frame) {
         val burst = max(0.12, rate * 0.010 / dur)
-        val closure = if (target.aspirated && next?.vowel == true) 0.55 else 0.75
+        val breath = next?.takeIf { target.aspirated && (it.vowel || it.ph.manner == Manner.LIQUID || it.ph.manner == Manner.GLIDE) }
+        val closure = if (breath != null) 0.55 else 0.75
         when {
             x < closure -> {
                 f.av = target.av * 0.5
@@ -169,9 +176,9 @@ private class Track(private val phones: List<TimedPhone>, private val c: Formant
                 f.af = target.af
                 f.bypass = target.bypass
             }
-            target.aspirated && next?.vowel == true -> {
+            breath != null -> {
                 f.ah = 0.55
-                val v = FormantTables.of(next.ph)
+                val v = FormantTables.of(breath.ph)
                 f.f1 = v.f1 * scale; f.f2 = v.f2 * scale; f.f3 = v.f3 * scale
             }
             else -> f.av = target.av
