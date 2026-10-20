@@ -43,7 +43,9 @@ class LpcChip(private val bitsOut: Int = 8) : Effect {
             }
             val rms = sqrt(e / buf.size)
             val lpc = Lpc.analyze(buf, ORDER)
-            voiced[f] = zc < buf.size * 0.25 && rms > 0.004
+            /* the phonemes say where the voice is noise, the zero crossings where an engine hisses on its own */
+            val noise = ctx.noiseAt(((f * FRAME + FRAME / 2).toLong() * rate / CHIP_RATE).toInt())
+            voiced[f] = noise < 1.0 && zc < buf.size * 0.25 && rms > 0.004
             for (j in 1..ORDER) ks[f][j] = quantise(lpc.k[j], K_BITS[j])
             if (!voiced[f]) for (j in 5..ORDER) ks[f][j] = 0.0
             energy[f] = quantiseEnergy(rms)

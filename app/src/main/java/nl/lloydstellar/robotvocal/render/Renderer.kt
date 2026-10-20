@@ -11,6 +11,7 @@ import nl.lloydstellar.robotvocal.text.LyricLine
 import nl.lloydstellar.robotvocal.text.Lyrics
 import nl.lloydstellar.robotvocal.voice.VoiceEngine
 import nl.lloydstellar.robotvocal.voice.VoiceRegistry
+import java.util.Arrays
 import kotlin.math.abs
 import kotlin.math.pow
 
@@ -108,9 +109,8 @@ object Renderer {
         val origin = rendered.origin - lead
         if (stutters.isNotEmpty()) stutter(dry, origin, timed, stutters, song.bpm, sampleRate)
         fun ranges(pick: (TimedPhone) -> Boolean) = timed.filter(pick).groupBy { it.syllable }.values.map { it.first().start..it.last().end }
-        val ctx = FxContext(sampleRate, song.bpm, origin, song.id.hashCode(), ranges { it.lineEnd }, ranges { it.lineStart }) { frame ->
-            pitchAt(timed, frame)
-        }
+        val ctx = FxContext(sampleRate, song.bpm, origin, song.id.hashCode(), ranges { it.lineEnd }, ranges { it.lineStart },
+            noiseTrack(timed, sampleRate)) { frame -> pitchAt(timed, frame) }
         var channels = arrayOf(dry.copyOf())
         for (preset in listOf(RobotPresets.byId(song.effect), RobotPresets.motion(song.motion), RobotPresets.space(song.space))) {
             channels = preset.apply(channels, ctx)
@@ -155,6 +155,17 @@ object Renderer {
             } else hi = mid - 1
         }
         return phones[found].pitchHz
+    }
+
+    /** How much of the voice is noise at a song frame: the [Excitation] of the phone sounding there, none in a rest. */
+    private fun noiseTrack(phones: List<TimedPhone>, rate: Int): (Long) -> Double {
+        val parts = phones.flatMap { Excitation.parts(it.ph, it.start.toDouble(), it.end.toDouble(), rate) }
+        val starts = DoubleArray(parts.size) { parts[it].start }
+        return { frame ->
+            val found = Arrays.binarySearch(starts, frame.toDouble())
+            val i = if (found >= 0) found else -found - 2
+            parts.getOrNull(i)?.takeIf { frame < it.end }?.noise ?: 0.0
+        }
     }
 
     /**

@@ -1,8 +1,8 @@
 package nl.lloydstellar.robotvocal.voice.chip
 
 import nl.lloydstellar.robotvocal.dsp.Resampler
+import nl.lloydstellar.robotvocal.render.Excitation
 import nl.lloydstellar.robotvocal.render.TimedPhone
-import nl.lloydstellar.robotvocal.text.Ph
 import nl.lloydstellar.robotvocal.voice.Rendered
 import nl.lloydstellar.robotvocal.voice.VoiceEngine
 import nl.lloydstellar.robotvocal.voice.VoiceInfo
@@ -45,7 +45,10 @@ class SpellEngine(private val source: VoiceEngine, private val sourceVoice: Stri
      * short consonant at a fast tempo keeps a moment of its own. Where the
      * chip does not glide, when the voicing changes or after a rest, a frame
      * starts exactly where the phoneme starts, so that sound comes on time.
-     * The rests themselves are silent frames.
+     * The rests themselves are silent frames. A voiced stop ends in an
+     * unvoiced burst ([Excitation]): voiced, the chirp would ring through the
+     * bright spectrum of the burst, a high whoop at the start of the vowel
+     * after it.
      *
      * Where two words would run into each other, the voice keeps them apart
      * the way the toy said its words: a silence of [WORD_GAP_MS] comes off
@@ -72,7 +75,7 @@ class SpellEngine(private val source: VoiceEngine, private val sourceVoice: Stri
             val start = max((p.start - origin).toDouble(), cursor)
             var end = (p.end - origin).toDouble()
             val next = phones.getOrNull(j + 1)
-            if (next != null && next.word != p.word && p.word in content && next.ph.voiced == endsVoiced(p.ph)) {
+            if (next != null && next.word != p.word && p.word in content && next.ph.voiced == Excitation.endsVoiced(p.ph)) {
                 val silence = (next.start - p.end).toDouble()
                 if (silence < gap) end -= min(gap - silence, (end - start) * 0.4)
             }
@@ -80,7 +83,9 @@ class SpellEngine(private val source: VoiceEngine, private val sourceVoice: Stri
                 rest(cursor, p.pitchHz)
                 voiced = null
             }
-            for ((a, b, v) in parts(p.ph, start, end, rate)) {
+            for (part in Excitation.parts(p.ph, start, end, rate)) {
+                val (a, b) = part
+                val v = part.voiced
                 val n = ceil((b - a) / longest).toInt().coerceAtLeast(1)
                 val piece = (b - a) / n
                 val width = (piece * 1.5).coerceIn(narrow, wide)
@@ -101,29 +106,9 @@ class SpellEngine(private val source: VoiceEngine, private val sourceVoice: Stri
         }
     }
 
-    /**
-     * The parts of a phoneme from [start] to [end], each voiced or not. A
-     * voiced stop (b, d, g) is a voiced closure and then a burst of noise, the
-     * last [BURST_MS] (at most 40 %); the j of "judge" a voiced closure and then
-     * its hiss. Voiced, the chirp would ring through the bright spectrum of the
-     * burst, a high whoop at the start of the vowel after it.
-     */
-    private fun parts(ph: Ph, start: Double, end: Double, rate: Int): List<Triple<Double, Double, Boolean>> {
-        val split = when (ph) {
-            Ph.B, Ph.D, Ph.G -> end - min(rate * BURST_MS / 1000.0, (end - start) * 0.4)
-            Ph.JH -> (start + end) / 2
-            else -> return listOf(Triple(start, end, ph.voiced))
-        }
-        return listOf(Triple(start, split, true), Triple(split, end, false))
-    }
-
-    /** Whether a phoneme ends voiced: a voiced stop ends in its burst. */
-    private fun endsVoiced(ph: Ph) = ph.voiced && ph !in setOf(Ph.B, Ph.D, Ph.G, Ph.JH)
-
     private companion object {
         const val FRAME_MS = 25
         const val ANALYSIS_HZ = 100.0
         const val WORD_GAP_MS = 10
-        const val BURST_MS = 20
     }
 }

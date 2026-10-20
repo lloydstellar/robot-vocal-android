@@ -2,6 +2,7 @@ package nl.lloydstellar.robotvocal.dsp
 
 import kotlin.math.PI
 import kotlin.math.cos
+import kotlin.math.exp
 import kotlin.math.sqrt
 
 /**
@@ -10,6 +11,9 @@ import kotlin.math.sqrt
  * through a tube into the mouth. After the design of mda TalkBox: 16 ms Hann
  * frames, half overlapping, a filter of about 24 poles at 48 kHz.
  * [hiss] adds the high-passed voice for the consonants, as the DigiTech Talker did.
+ * Where the voice is noise (an s, the burst of a t) the mouth gets noise
+ * instead of the keyboard, as a talkbox player makes those sounds with the
+ * mouth alone.
  */
 class Talkbox(
     private val carrier: Carrier = Carrier.SAW,
@@ -25,7 +29,15 @@ class Talkbox(
         val window = DoubleArray(n) { 0.5 - 0.5 * cos(2 * PI * it / n) }
         val osc = CarrierOsc(carrier, rate, ctx.seed)
         val shift = Math.pow(2.0, octave.toDouble())
-        val car = DoubleArray(x.size + n) { if (it < x.size) osc.next(ctx.pitchAt(it) * shift) else 0.0 }
+        val noise = Noise(ctx.seed xor 0x5EED)
+        val glide = exp(-1.0 / (0.003 * rate))
+        var share = 0.0
+        val car = DoubleArray(x.size + n) {
+            if (it < x.size) {
+                share = glide * share + (1 - glide) * ctx.noiseAt(it)
+                osc.next(ctx.pitchAt(it) * shift) * (1 - share) + noise.next() * share
+            } else 0.0
+        }
         val out = DoubleArray(x.size + n)
         val frame = DoubleArray(n)
         val y = DoubleArray(n)

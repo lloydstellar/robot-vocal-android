@@ -21,9 +21,13 @@ class FxContext(
     val lineEnds: List<LongRange> = emptyList(),
     /** Song frames of the first syllable of every line, for reverse swells. */
     val lineStarts: List<LongRange> = emptyList(),
+    /** How much of the voice is noise at a song frame: 0 voiced, 1 an s or the burst of a t (see render.Excitation). */
+    private val noise: (Long) -> Double = { 0.0 },
     private val pitch: (Long) -> Double,
 ) {
     fun pitchAt(sample: Int): Double = pitch(origin + sample)
+
+    fun noiseAt(sample: Int): Double = noise(origin + sample)
 
     /** Samples in [beats] beats at the song's tempo. */
     fun beats(beats: Double): Int = (beats * 60.0 / bpm * rate).roundToInt()
