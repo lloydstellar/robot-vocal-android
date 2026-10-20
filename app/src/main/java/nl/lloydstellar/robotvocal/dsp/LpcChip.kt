@@ -23,6 +23,7 @@ class LpcChip(private val bitsOut: Int = 8) : Effect {
     override fun process(x: FloatArray, ctx: FxContext): FloatArray {
         val rate = ctx.rate
         val low = Resampler.convert(x, rate, CHIP_RATE)
+        level(low)
         val frames = (low.size + FRAME - 1) / FRAME
         val window = DoubleArray(FRAME + FRAME / 4) { 0.54 - 0.46 * cos(2 * PI * it / (FRAME + FRAME / 4 - 1)) }
         val ks = Array(frames) { DoubleArray(ORDER + 1) }
@@ -83,6 +84,24 @@ class LpcChip(private val bitsOut: Int = 8) : Effect {
         return followVoice(FloatArray(x.size) { i -> out.getOrElse(i / hold) { 0f } }, x, rate, 25.0)
     }
 
+    /**
+     * Sets the loudest frame to energy step 12 of 15, as a recording was
+     * levelled before it was encoded: then every voice uses the chip's
+     * steps alike and only the loudest vowels touch its top.
+     */
+    private fun level(low: FloatArray) {
+        var loudest = 0.0
+        for (start in low.indices step FRAME) {
+            val end = minOf(low.size, start + FRAME)
+            var e = 0.0
+            for (i in start until end) e += low[i].toDouble() * low[i]
+            loudest = maxOf(loudest, sqrt(e / (end - start)))
+        }
+        if (loudest <= 0) return
+        val g = (LOUDEST / loudest).toFloat()
+        for (i in low.indices) low[i] *= g
+    }
+
     /** A reflection coefficient in [bits] bits, spaced evenly on the arcsine scale where the ear is evenly sensitive. */
     private fun quantise(k: Double, bits: Int): Double {
         val levels = (1 shl bits) - 1
@@ -100,6 +119,8 @@ class LpcChip(private val bitsOut: Int = 8) : Effect {
 
     companion object {
         private const val CHIP_RATE = 8_000
+        /** The RMS of energy step 12: 0.002 times 2 to the 6th. */
+        private const val LOUDEST = 0.128
         private const val FRAME = 200
         private const val ORDER = 10
         private val K_BITS = intArrayOf(0, 5, 5, 4, 4, 4, 4, 4, 3, 3, 3)

@@ -26,8 +26,18 @@ class RobotPreset(val id: String, val name: String, val description: String, val
  * docs/research/06 describes the hardware each one is modelled on.
  */
 object RobotPresets {
-    /** Before a robot effect: no rumble, and words at an even level. */
-    private fun clean() = listOf(Eq(highPass = 70.0), Compressor(-22.0, 3.0))
+    /**
+     * Before a robot effect, the chain of a vocal going into a vocoder
+     * (docs/research/12): every voice at one working level, no rumble, a fast
+     * compressor that catches the peaks and a slow one that evens out the
+     * words by about 3 dB, then the level the effects were made for.
+     */
+    private fun clean() = listOf(
+        Level(-20.0), Eq(highPass = 70.0),
+        Compressor(-16.0, 4.0, attackMs = 1.0, releaseMs = 60.0),
+        Compressor(-20.0, 3.0, attackMs = 10.0, releaseMs = 400.0),
+        Level(-18.0),
+    )
 
     private fun chain(vararg effects: Effect) = Chain(clean() + effects)
 

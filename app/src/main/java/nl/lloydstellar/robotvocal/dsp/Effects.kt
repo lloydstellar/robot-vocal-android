@@ -1,11 +1,13 @@
 package nl.lloydstellar.robotvocal.dsp
 
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.log10
 import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import kotlin.math.sqrt
 import kotlin.math.tanh
 
 /** What an effect knows about the song: the rate, the tempo, the pitch at every frame, where the buffer starts. */
@@ -62,11 +64,16 @@ class Comb(private val delayMs: Double = 4.0, private val feedback: Double = 0.6
     }
 }
 
-/** Fewer samples and fewer steps: the grain of early digital audio. */
+/**
+ * Fewer samples and fewer steps: the grain of early digital audio. The steps
+ * are counted from the loudest moment, as on a sampler whose input was set
+ * so the loudest sound just fits; the grain is then the same for every voice.
+ */
 class Crusher(private val rate: Int = 11_025, private val bits: Int = 8) : Effect {
     override fun process(x: FloatArray, ctx: FxContext): FloatArray {
         val hold = ctx.rate.toDouble() / rate
-        val levels = 2.0.pow(bits - 1)
+        val peak = x.maxOfOrNull { abs(it) }?.takeIf { it > 0f } ?: return x
+        val levels = 2.0.pow(bits - 1) / peak
         var held = 0f
         var next = 0.0
         return FloatArray(x.size) { i ->
@@ -153,6 +160,24 @@ class Eq(private val highPass: Double = 0.0, private val lowPass: Double = 0.0, 
     }
 }
 
+/**
+ * Sets the voice to one working level before a robot effect: the engines
+ * speak at levels up to 40 dB apart, and a compressor, a drive or a crusher
+ * after this must find every voice at the same height. The level is the RMS
+ * of the voice where it sounds: its 20 ms frames within 40 dB of the loudest.
+ */
+class Level(private val db: Double = -20.0) : Effect {
+    override fun process(x: FloatArray, ctx: FxContext): FloatArray {
+        val n = ctx.rate / 50
+        val frames = DoubleArray(x.size / n) { f -> (0 until n).sumOf { (x[f * n + it] * x[f * n + it]).toDouble() } / n }
+        val loudest = frames.maxOrNull() ?: return x
+        if (loudest <= 0) return x
+        val rms = sqrt(frames.filter { it > loudest * 1e-4 }.average())
+        val g = (10.0.pow(db / 20) / rms).toFloat()
+        return FloatArray(x.size) { x[it] * g }
+    }
+}
+
 /** A compressor: levels above [thresholdDb] grow only 1 / [ratio] as fast; keeps robot words even. */
 class Compressor(private val thresholdDb: Double = -20.0, private val ratio: Double = 4.0,
                  private val attackMs: Double = 5.0, private val releaseMs: Double = 80.0) : Effect {
@@ -183,10 +208,10 @@ fun followVoice(out: FloatArray, voice: FloatArray, rate: Int, releaseMs: Double
     var env = 0.0
     var held = 0
     var peak = 1e-9
-    for (v in voice) peak = maxOf(peak, kotlin.math.abs(v.toDouble()))
+    for (v in voice) peak = maxOf(peak, abs(v.toDouble()))
     val open = peak * 0.01
     for (i in out.indices) {
-        val level = kotlin.math.abs(voice.getOrElse(i) { 0f }.toDouble())
+        val level = abs(voice.getOrElse(i) { 0f }.toDouble())
         if (level > open) held = hold else if (held > 0) held--
         val target = if (held > 0) 1.0 else 0.0
         env = if (target > env) attack * env + (1 - attack) * target else release * env + (1 - release) * target

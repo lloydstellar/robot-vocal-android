@@ -43,4 +43,18 @@ class PresetsTest {
         }
         File(dir, "report.txt").writeText(report.toString())
     }
+
+    @Test fun `an effect sounds the same whatever level the engine speaks at`() {
+        /* the engines speak up to 40 dB apart: the same voice, and the same voice 40 dB down, come out of every effect alike */
+        val take = Renderer.render(song, arrangement, engine)
+        val ctx = FxContext(48_000, song.bpm, take.origin, 1) { 110.0 }
+        for (preset in RobotPresets.ALL) {
+            val loud = preset.apply(arrayOf(take.dry.copyOf()), ctx)[0]
+            val quiet = preset.apply(arrayOf(FloatArray(take.dry.size) { take.dry[it] * 0.01f }), ctx)[0]
+            val a = sqrt(loud.sumOf { it.toDouble() * it })
+            val b = sqrt(quiet.sumOf { it.toDouble() * it })
+            val difference = sqrt(loud.indices.sumOf { (loud[it] / a - quiet[it] / b).let { d -> d * d } })
+            assertTrue("${preset.name} changes with the level: ${difference}", difference < 0.01)
+        }
+    }
 }
