@@ -114,8 +114,10 @@ object Renderer {
         val ringOut = if (song.space != "none") sampleRate * 4 else sampleRate / 2
         val dry = FloatArray(lead + rendered.samples.size + ringOut)
         System.arraycopy(rendered.samples, 0, dry, lead, rendered.samples.size)
-        val origin = rendered.origin - lead
-        Clarity.apply(dry, origin, timed, sampleRate)
+        val start = rendered.origin - lead
+        Clarity.apply(dry, start, timed, sampleRate)
+        /* the vowels come up a moment after their step, as the voice and its filters do: the take starts that much earlier */
+        val origin = start - Onsets.latency(dry, start, timed, sampleRate)
         if (stutters.isNotEmpty()) stutter(dry, origin, timed, stutters, song.bpm, sampleRate)
         fun ranges(pick: (TimedPhone) -> Boolean) = timed.filter(pick).groupBy { it.syllable }.values.map { it.first().start..it.last().end }
         val ctx = FxContext(sampleRate, song.bpm, origin, song.id.hashCode(), ranges { it.lineEnd }, ranges { it.lineStart },

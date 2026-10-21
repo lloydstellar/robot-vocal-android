@@ -1,7 +1,8 @@
 ROBOT VOCAL, alles voor de Play Store
 Pakketnaam: nl.lloydstellar.robotvocal
 
-UPDATE 1.1.0 (versionCode 2): beter verstaanbare robots
+UPDATE 1.1.0 (versionCode 3): beter verstaanbare robots
+(Stond versionCode 2 al in de Play Console, dan vervangt deze hem.)
 1. Testen en releasen > Productie (of de track waar 1.0.0 staat) > Nieuwe release.
 2. app-release.aab uit robot-vocal-playstore-1.1.0.zip uploaden.
 3. Release-opmerkingen: de teksten onder "Release notes" in listing.md,

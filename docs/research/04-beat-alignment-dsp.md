@@ -167,6 +167,10 @@ Live's Quantize moves "the nearest transient to the closest grid line" ([manual]
 6. Neural voices through strategy C (Piper alignments, Kokoro `pred_dur`).
 7. Export metadata and LA2L.
 
+## 13a. Measured afterwards: how late a voice comes up
+
+Placing the vowel on its step is not the whole story: a voice takes a moment to sound. In Ableton Live 12.4 Lloyd saw UNIT ONE start 2 ms after the grid at 134 BPM, and measured on the take, the vowels that start out of silence or after a hiss reach a tenth of their early peak this long after their step (median, 2026-10-21): SPELLER 0.9 ms, STANDARD M 1.0, ROBOSOFT 1.6, UNIT ONE 2.0, DEEP UNIT 2.8, KAL 2.9, TIN MAN 3.4, HOME MICRO 4.0, DESKTOP 10.7. The first pulse of the voice can come most of a period after the step, filters ring in, and some engines fade in their frames. The renderer now measures this on every take (`render/Onsets.kt`) and starts the take that much earlier, at most 20 ms; afterwards the median is within half a millisecond for UNIT ONE.
+
 ## 14. Not researched
 
 Accuracy of eSpeak NG phoneme events against the audio; detector error on synthetic voices; Rubber Band key-frame accuracy and CPU cost on a Pixel 8; listening tests of the three strategies; Bluetooth latency in timestamps; current FL Studio, Logic and Bitwig handling of `acid`; MPC-style swing percentages; Scott 1998, Howell 1988, Hermes 1990 and YIN in the original; DiffSinger and VOCALOID manual conventions; resampler choice (libsamplerate BSD-2-Clause and r8brain MIT exist).

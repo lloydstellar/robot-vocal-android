@@ -63,6 +63,23 @@ class RenderTest {
         for (th in firsts) assertEquals("the th of \"the\" at ${th.start}", 50.0, (th.end - th.start) / 48.0, 0.5)
     }
 
+    @Test fun `a vowel out of a rest is heard on its step`() {
+        /*
+         * The sound of a vowel takes a moment to come up (the first pulse, the filters ringing in), about 2 ms for
+         * UNIT ONE; the take starts that much earlier, so in a DAW the vowels after a rest start on the grid.
+         */
+        val take = Renderer.render(song, Arranger.arrange(song, TestData.lyrics), engine)
+        val x = take.channels[0]
+        val starts = take.phones.filter { it.vowel }.mapNotNull { v ->
+            val at = (v.start - take.origin).toInt()
+            val peak = (at until at + 2400).maxOf { kotlin.math.abs(x[it]) }
+            if ((at - 480 until at).any { kotlin.math.abs(x[it]) > peak * 0.1f }) null
+            else ((at until at + 2400).first { kotlin.math.abs(x[it]) >= peak * 0.1f } - at) / 48.0
+        }.sorted()
+        assertTrue("only ${starts.size} vowels out of a rest", starts.size >= 3)
+        assertEquals("the median vowel starts ${starts[starts.size / 2]} ms after its step", 0.0, starts[starts.size / 2], 0.5)
+    }
+
     @Test fun `every vowel starts exactly on its step`() {
         val arrangement = Arranger.arrange(song, TestData.lyrics)
         val take = Renderer.render(song, arrangement, engine)

@@ -19,7 +19,7 @@ android {
         applicationId = "nl.lloydstellar.robotvocal"
         minSdk = 30
         targetSdk = 36
-        versionCode = 2
+        versionCode = 3
         versionName = "1.1.0"
         /* LA2L's own server; debug builds can point at a local test receiver with -Pla2lServer=http://127.0.0.1:41234/api */
         buildConfigField("String", "LA2L_SERVER", "\"\"")
